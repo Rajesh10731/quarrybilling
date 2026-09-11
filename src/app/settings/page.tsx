@@ -80,7 +80,7 @@ export default function SettingsPage() {
         throw new Error(data.message || "Failed to update settings");
       }
 
-      setSuccess("Company & Bank settings saved successfully! Future bills will pre-populate with these defaults.");
+      setSuccess("Company & Bank defaults updated! New bills will automatically use these settings.");
     } catch (err: any) {
       setError(err.message || "Error saving settings");
     } finally {
@@ -89,42 +89,42 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-24 text-slate-400">Loading settings...</div>;
+    return <div className="text-center py-24 text-slate-400 font-semibold">Loading system settings...</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Settings className="w-6 h-6 text-amber-400" />
-            <span>Company & Bank Defaults Settings</span>
+          <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2 tracking-tight">
+            <Settings className="w-7 h-7 text-amber-400" />
+            <span>Company & Bank Defaults</span>
           </h1>
-          <p className="text-sm text-slate-400">
-            Configure default company information, bank details, and invoice terms. (You can still edit any of these per bill).
+          <p className="text-xs sm:text-sm text-slate-400">
+            Configure global business header, bank account credentials, and billing terms.
           </p>
         </div>
       </div>
 
       {success && (
-        <div className="p-4 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-2xl text-xs flex items-center gap-2">
+        <div className="p-4 bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 rounded-2xl text-xs flex items-center gap-2 shadow-lg glow-emerald">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-          <span>{success}</span>
+          <span className="font-semibold">{success}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 bg-red-950/80 border border-red-800 text-red-300 rounded-2xl text-xs">
+        <div className="p-4 bg-red-950/80 border border-red-800 text-red-300 rounded-2xl text-xs font-semibold">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Company Branding */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 flex items-center gap-2 border-b border-slate-800/80 pb-3">
             <Building className="w-4 h-4" />
-            <span>Company Profile & Header</span>
+            <span>Company Profile & Invoice Header</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -135,7 +135,7 @@ export default function SettingsPage() {
                 required
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-bold focus:border-amber-500 focus:outline-none"
               />
             </div>
             <div>
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                 type="text"
                 value={formData.companyGstin}
                 onChange={(e) => setFormData({ ...formData, companyGstin: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-mono focus:border-amber-500 focus:outline-none"
               />
             </div>
           </div>
@@ -195,8 +195,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Bank Account */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 flex items-center gap-2 border-b border-slate-800/80 pb-3">
             <Landmark className="w-4 h-4" />
             <span>Default Bank Account Details</span>
           </h2>
@@ -229,7 +229,7 @@ export default function SettingsPage() {
                 type="text"
                 value={formData.bankIfsc}
                 onChange={(e) => setFormData({ ...formData, bankIfsc: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-mono focus:border-amber-500 focus:outline-none"
               />
             </div>
             <div>
@@ -246,8 +246,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Terms & Signatory */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 flex items-center gap-2 border-b border-slate-800/80 pb-3">
             <ShieldCheck className="w-4 h-4" />
             <span>Default Terms & Authorised Signatory</span>
           </h2>
@@ -278,11 +278,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center space-x-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all text-sm disabled:opacity-50"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-2xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all text-sm disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? "Saving Settings..." : "Save Default Settings"}</span>
@@ -292,3 +292,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

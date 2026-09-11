@@ -63,42 +63,48 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
+      {/* Ambient Background Glows */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/15 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-72 h-72 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="w-full max-w-md space-y-6 relative z-10">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex bg-amber-500 text-slate-950 p-3 rounded-2xl shadow-xl shadow-amber-500/20 mb-2">
-            <Mountain className="w-8 h-8" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 p-3.5 rounded-2xl shadow-xl shadow-amber-500/30 mb-1 glow-amber">
+            <Mountain className="w-9 h-9" />
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
             Quarry<span className="text-amber-400">Billing</span>
           </h1>
-          <p className="text-sm text-slate-400">Sign in to manage and generate quarry supply bills</p>
+          <p className="text-xs sm:text-sm text-slate-400">High-Performance Industrial Quarry Billing & Accounting</p>
         </div>
 
         {/* Login Form Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+        <div className="glass-card border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
           {error && (
-            <div className="mb-4 p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-2xl text-xs flex items-center gap-2 font-semibold">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
               <span>{error}</span>
             </div>
           )}
 
           {seedSuccess && (
-            <div className="mb-4 p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-2xl text-xs flex items-center gap-2 font-semibold shadow-lg glow-emerald">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
               <span>{seedSuccess}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-300">
+                  Email Address
+                </label>
+                <span className="text-[10px] text-amber-400/80 font-medium">admin@quarry.com</span>
+              </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
@@ -106,16 +112,21 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-3 text-base sm:text-sm text-white focus:border-amber-500 focus:outline-none transition-all font-medium"
                   placeholder="admin@quarry.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-300">
+                  Password
+                </label>
+                <span className="text-[10px] text-amber-400/80 font-medium">admin123</span>
+              </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -123,40 +134,53 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-3 text-base sm:text-sm text-white focus:border-amber-500 focus:outline-none transition-all font-medium"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
+            {/* Big 1-Click Login Button for Easy Access */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 flex items-center justify-center space-x-2 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all text-sm disabled:opacity-50"
+              className="w-full mt-2 flex items-center justify-center space-x-2 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-500/25 transition-all text-sm active:scale-95 disabled:opacity-50"
             >
-              <span>{loading ? "Signing in..." : "Sign In to System"}</span>
+              <span>{loading ? "Signing in..." : "Sign In to Portal"}</span>
               <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@quarry.com");
+                setPassword("admin123");
+              }}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-bold rounded-xl border border-amber-500/20 transition-all flex items-center justify-center gap-1.5"
+            >
+              <span>🔑 Auto-Fill Demo Credentials</span>
             </button>
           </form>
 
           {/* Quick Seed Button */}
-          <div className="mt-6 pt-4 border-t border-slate-800 text-center">
-            <p className="text-xs text-slate-400 mb-2">First time running local setup?</p>
+          <div className="pt-4 border-t border-slate-800/80 text-center space-y-2">
+            <p className="text-[11px] text-slate-400">First time setting up local database?</p>
             <button
               type="button"
               onClick={handleSeedDatabase}
               disabled={seeding}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium rounded-xl border border-slate-700 transition-all disabled:opacity-50"
+              className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all disabled:opacity-50"
             >
-              {seeding ? "Seeding Data..." : "⚡ Seed Admin User & Screenshot Sample Bill"}
+              {seeding ? "Seeding..." : "⚡ Seed Admin Credentials & Sample Invoice"}
             </button>
           </div>
         </div>
 
-        <div className="text-center text-xs text-slate-500">
-          Demo Admin: <span className="text-slate-300">admin@quarry.com</span> | Password: <span className="text-slate-300">admin123</span>
+        <div className="text-center text-xs text-slate-500 font-medium">
+          Demo: <span className="text-amber-400 font-bold">admin@quarry.com</span> • <span className="text-amber-400 font-bold">admin123</span>
         </div>
       </div>
     </div>
   );
 }
+

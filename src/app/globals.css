@@ -1,26 +1,159 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #020617;
+  --foreground: #f8fafc;
+  --amber-primary: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.25);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: 
+    radial-gradient(circle at 10% 10%, rgba(245, 158, 11, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(14, 165, 233, 0.04) 0%, transparent 45%),
+    #020617;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
 }
+
+@media (min-width: 1024px) {
+  body {
+    padding-bottom: 0;
+  }
+}
+
+/* Prevent auto-zoom on iOS mobile inputs while keeping desktop styling */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth Touch Scrolling */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Mobile safe area padding utilities */
+.safe-bottom {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-nav-safe {
+  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Form bottom padding when both bottom nav and floating action bar exist */
+.pb-mobile-form {
+  padding-bottom: 9rem;
+}
+@media (min-width: 1024px) {
+  .pb-mobile-form {
+    padding-bottom: 2rem;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #060913;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Selection Highlight */
+::selection {
+  background: rgba(245, 158, 11, 0.3);
+  color: #fef3c7;
+}
+
+/* Glassmorphism & High-End Card Utilities */
+.glass-card {
+  background: rgba(11, 18, 34, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-card-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), 0 0 20px -5px rgba(245, 158, 11, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-header {
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* Touch Friendly Tap Feedback */
+.tap-active {
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+.tap-active:active {
+  transform: scale(0.97);
+}
+
+/* Commercial Indian Vehicle Registration Plate Style */
+.vehicle-plate {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.06em;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Glow effects */
+.glow-amber {
+  box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.35);
+}
+.glow-emerald {
+  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+}
+.glow-blue {
+  box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.35);
+}
+
+/* Print specific styles */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+

@@ -279,7 +279,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 text-slate-100">
+    <div className="max-w-6xl mx-auto p-3 sm:p-6 text-slate-100 pb-mobile-form">
       {/* Top Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -327,10 +327,13 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
 
       <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
         {/* 1. Header & Invoice Metadata */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 border-b border-slate-800 pb-2 flex items-center justify-between">
-            <span>1. Bill Header & Transport Info</span>
-            <span className="text-xs font-normal text-slate-400">Invoice #, Dates, Lorry & Delivery</span>
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 border-b border-slate-800/80 pb-3 flex items-center justify-between">
+            <span className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">1</span>
+              <span className="tracking-tight">Bill Header & Transport Details</span>
+            </span>
+            <span className="text-xs font-semibold text-slate-400">Invoice #, Lorry & Supply Site</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -376,7 +379,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-2">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Invoice No. *</label>
               <input
@@ -404,9 +407,9 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               <input
                 type="text"
                 value={formData.vehicleNo}
-                onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-amber-300 font-bold focus:border-amber-500 focus:outline-none"
-                placeholder="e.g. TN74BK6973"
+                onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value.toUpperCase() })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-amber-300 font-mono font-bold uppercase tracking-wider focus:border-amber-500 focus:outline-none"
+                placeholder="e.g. TN 74 BK 6973"
               />
             </div>
             <div>
@@ -421,7 +424,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-2">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Place of Supply</label>
               <input
@@ -483,12 +486,13 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         </div>
 
         {/* 2. Customer Parties (Billed To & Shipped To) */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2">
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/80 pb-3">
             <div>
-              <h2 className="text-base font-semibold text-amber-400 flex items-center gap-2">
+              <h2 className="text-base font-extrabold text-amber-400 flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">2</span>
                 <UserCheck className="w-4 h-4" />
-                <span>2. Customer Party Details</span>
+                <span className="tracking-tight">Customer Party Details</span>
               </h2>
               <p className="text-xs text-slate-400">Saving this bill will automatically store customer in database</p>
             </div>
@@ -664,9 +668,12 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         </div>
 
         {/* 3. Items & Material Details */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h2 className="text-base font-semibold text-amber-400">3. Quarry Goods & Materials</h2>
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
+            <h2 className="text-base font-extrabold text-amber-400 flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">3</span>
+              <span className="tracking-tight">Quarry Goods & Materials</span>
+            </h2>
             <button
               type="button"
               onClick={addItemRow}
@@ -677,14 +684,15 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase">
                   <th className="p-2 w-10">S.N.</th>
                   <th className="p-2">Description of Goods</th>
                   <th className="p-2 w-28">HSN/SAC</th>
-                  <th className="p-2 w-24">Qty</th>
+                  <th className="p-2 w-24">Qty / Weight</th>
                   <th className="p-2 w-24">Unit</th>
                   <th className="p-2 w-28">Price (Rate ₹)</th>
                   <th className="p-2 w-32 text-right">Amount (₹)</th>
@@ -702,12 +710,12 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                           required
                           value={item.description}
                           onChange={(e) => handleItemChange(index, "description", e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white font-semibold focus:border-amber-500 focus:outline-none"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white font-semibold focus:border-amber-500 focus:outline-none uppercase"
                           placeholder="e.g. 20MM / CONCRETE SAND"
                         />
                         <div className="flex flex-wrap gap-1 pt-1">
                           <span className="text-[10px] text-slate-500 self-center">Suggestions:</span>
-                          {GOODS_SUGGESTIONS.slice(0, 5).map((sugg) => (
+                          {GOODS_SUGGESTIONS.slice(0, 6).map((sugg) => (
                             <button
                               key={sugg}
                               type="button"
@@ -732,11 +740,12 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                     <td className="p-2">
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
                         required
                         value={item.qty || ""}
                         onChange={(e) => handleItemChange(index, "qty", parseFloat(e.target.value) || 0)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-bold focus:border-amber-500 focus:outline-none"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-sm text-amber-300 font-bold focus:border-amber-500 focus:outline-none"
                         placeholder="0.00"
                       />
                     </td>
@@ -744,7 +753,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                       <select
                         value={item.unit}
                         onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
                       >
                         {UNITS.map((u) => (
                           <option key={u} value={u}>
@@ -756,12 +765,13 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                     <td className="p-2">
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
                         required
                         value={item.price || ""}
                         onChange={(e) => handleItemChange(index, "price", parseFloat(e.target.value) || 0)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white font-semibold focus:border-amber-500 focus:outline-none"
-                        placeholder="Rate"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-sm text-white font-semibold focus:border-amber-500 focus:outline-none"
+                        placeholder="Rate ₹"
                       />
                     </td>
                     <td className="p-2 text-right font-bold text-amber-400 text-sm">
@@ -784,12 +794,132 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card View for Items (Thumb-friendly & easy for workers) */}
+          <div className="block sm:hidden space-y-4">
+            {formData.items.map((item, index) => (
+              <div
+                key={index}
+                className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3 relative shadow-md"
+              >
+                <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                  <span className="text-xs font-black text-amber-400">
+                    Item #{index + 1}
+                  </span>
+                  {formData.items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItemRow(index)}
+                      className="text-xs text-red-400 hover:bg-red-950/50 px-2 py-1 rounded-lg flex items-center gap-1 border border-red-900/50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Material description with chips */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Material Description *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={item.description}
+                    onChange={(e) => handleItemChange(index, "description", e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold uppercase focus:border-amber-500 focus:outline-none"
+                    placeholder="20MM JALLY / M SAND"
+                  />
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {GOODS_SUGGESTIONS.map((sugg) => (
+                      <button
+                        key={sugg}
+                        type="button"
+                        onClick={() => handleItemChange(index, "description", sugg)}
+                        className={`text-[11px] font-bold px-2 py-1 rounded-lg transition-all ${
+                          item.description === sugg
+                            ? "bg-amber-500 text-slate-950 shadow-sm"
+                            : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        }`}
+                      >
+                        {sugg}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Qty & Unit */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Quantity / Weight *
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      required
+                      value={item.qty || ""}
+                      onChange={(e) => handleItemChange(index, "qty", parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-base text-amber-300 font-bold focus:border-amber-500 focus:outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Unit
+                    </label>
+                    <select
+                      value={item.unit}
+                      onChange={(e) => handleItemChange(index, "unit", e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:border-amber-500 focus:outline-none"
+                    >
+                      {UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Price and Calculated Amount */}
+                <div className="grid grid-cols-2 gap-2 items-center pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Rate per Unit (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      required
+                      value={item.price || ""}
+                      onChange={(e) => handleItemChange(index, "price", parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-base text-white font-bold focus:border-amber-500 focus:outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl text-right">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Amount:</span>
+                    <span className="text-base font-black text-amber-400">
+                      ₹{formatCurrency(item.amount || item.qty * item.price)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 4. Extra Ledger Charges (Loading & Lorry Freight) */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 border-b border-slate-800 pb-2">
-            4. Loading & Lorry Freight Charges
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 border-b border-slate-800/80 pb-3 flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">4</span>
+            <span className="tracking-tight">Loading & Lorry Freight Charges</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -797,6 +927,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               <label className="block text-xs font-medium text-slate-400 mb-1">Loading Charges (₹)</label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 value={formData.loadingCharges || ""}
                 onChange={(e) => setFormData({ ...formData, loadingCharges: parseFloat(e.target.value) || 0 })}
@@ -808,6 +939,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               <label className="block text-xs font-medium text-slate-400 mb-1">Lorry Freight (₹)</label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 value={formData.lorryFreight || ""}
                 onChange={(e) => setFormData({ ...formData, lorryFreight: parseFloat(e.target.value) || 0 })}
@@ -819,9 +951,10 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         </div>
 
         {/* 5. Totals, Taxes & Words */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 border-b border-slate-800 pb-2">
-            5. Totals & Tax Breakdown
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 border-b border-slate-800/80 pb-3 flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">5</span>
+            <span className="tracking-tight">Totals & Tax Summary</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -864,7 +997,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               </div>
             </div>
 
-            <div className="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+            <div className="space-y-2 bg-gradient-to-br from-slate-950 to-slate-900 p-5 rounded-2xl border border-amber-500/20 text-xs shadow-inner glow-amber">
               <div className="flex justify-between py-1 border-b border-slate-800">
                 <span className="text-slate-400">Material Amount:</span>
                 <span className="font-semibold text-white">₹{formatCurrency(formData.taxableAmount)}</span>
@@ -879,9 +1012,9 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                 <span className="text-slate-400">Total Tax:</span>
                 <span className="font-semibold text-white">₹{formatCurrency(formData.totalTax)}</span>
               </div>
-              <div className="flex justify-between py-2 text-sm font-bold text-amber-400">
+              <div className="flex justify-between pt-3 text-sm font-black text-amber-400">
                 <span>Grand Total:</span>
-                <span className="text-base">₹{formatCurrency(formData.grandTotal)}</span>
+                <span className="text-xl text-emerald-400">₹{formatCurrency(formData.grandTotal)}</span>
               </div>
             </div>
 
@@ -891,16 +1024,17 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                 rows={3}
                 value={formData.amountInWords}
                 onChange={(e) => setFormData({ ...formData, amountInWords: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-amber-300 font-semibold focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-amber-300 font-semibold focus:border-amber-500 focus:outline-none"
               />
             </div>
           </div>
         </div>
 
         {/* 6. Bank Details & Terms & Conditions */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-base font-semibold text-amber-400 border-b border-slate-800 pb-2">
-            6. Bank Account & Terms & Signatory
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
+          <h2 className="text-base font-extrabold text-amber-400 border-b border-slate-800/80 pb-3 flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm">6</span>
+            <span className="tracking-tight">Bank Account, Terms & Authorised Signatory</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1005,16 +1139,44 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
           </div>
         </div>
 
-        {/* Bottom Actions */}
+        {/* Bottom Actions (Desktop) */}
         <div className="flex justify-end gap-4 pt-4">
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center space-x-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all text-sm disabled:opacity-50"
+            className="flex items-center space-x-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 transition-all text-sm disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{loading ? "Saving Bill..." : "Save Bill"}</span>
           </button>
+        </div>
+
+        {/* Floating Save Action Bar for Mobile View */}
+        <div className="lg:hidden fixed bottom-[calc(3.25rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 p-3 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-between gap-3 shadow-2xl">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-bold uppercase">Grand Total:</span>
+            <span className="text-lg font-black text-amber-400">₹{formatCurrency(formData.grandTotal)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, false)}
+              disabled={loading}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs active:scale-95 shadow-md flex items-center gap-1.5"
+            >
+              <Save className="w-4 h-4" />
+              <span>{loading ? "Saving..." : "Save Bill"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={loading}
+              className="p-2.5 bg-slate-800 text-amber-400 rounded-xl border border-slate-700 active:scale-95"
+              title="Save & Print"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </form>
     </div>
