@@ -67,7 +67,7 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
   const emptyRowsCount = Math.max(0, minRows - items.length);
 
   return (
-    <div className="bg-white text-black p-4 font-sans text-xs max-w-[210mm] mx-auto print:max-w-none print:p-0 print:m-0 min-w-[650px] print:min-w-0">
+    <div className="paper bg-white text-black p-4 font-sans text-xs max-w-[210mm] mx-auto print:max-w-none print:p-0 print:m-0 min-w-[650px] print:min-w-0">
       {/* Outer Invoice Container Box */}
       <div className="border border-black">
         

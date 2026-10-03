@@ -60,7 +60,7 @@ export default function PurchasePrintView({
   companyMobile?: string;
 }) {
   return (
-    <div className="bg-white text-black p-4 font-sans text-xs max-w-[210mm] mx-auto print:max-w-none print:p-0 print:m-0 min-w-[650px] print:min-w-0">
+    <div className="paper bg-white text-black p-4 font-sans text-xs max-w-[210mm] mx-auto print:max-w-none print:p-0 print:m-0 min-w-[650px] print:min-w-0">
       <div className="border-2 border-black">
         {/* Header Title */}
         <div className="border-b-2 border-black p-3 text-center bg-slate-50 relative">

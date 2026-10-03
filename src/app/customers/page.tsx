@@ -60,7 +60,8 @@ export default function CustomersListPage() {
         setNewCustomer({ name: "", mobile: "", gstin: "", address: "", deliveryPlace: "", openingBalance: 0 });
         fetchCustomers(search);
       } else {
-        alert("Failed to create customer");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to create customer");
       }
     } catch (err) {
       alert("Error creating customer");
@@ -74,7 +75,9 @@ export default function CustomersListPage() {
         setCustomers((prev) => prev.filter((c) => c._id !== id));
         setConfirmDeleteId(null);
       } else {
-        alert("Failed to delete customer");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to delete customer");
+        setConfirmDeleteId(null);
       }
     } catch (err) {
       alert("Error deleting customer");
@@ -82,7 +85,7 @@ export default function CustomersListPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
+    <div className="max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -321,7 +324,7 @@ export default function CustomersListPage() {
 
       {/* Add Customer Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 bg-slate-400/35 backdrop-blur-[2px] z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="glass-card rounded-3xl p-5 sm:p-6 max-w-md w-full border border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">

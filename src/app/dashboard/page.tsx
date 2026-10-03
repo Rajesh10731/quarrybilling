@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
 import { Customer } from "@/models/Customer";
 import { Purchase } from "@/models/Purchase";
+import { Vendor } from "@/models/Vendor";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   FileText,
@@ -46,12 +47,14 @@ export default async function DashboardPage() {
 
   // Compute inward purchase stats
   const totalPurchasesCount = await Purchase.countDocuments();
-  const allPurchases = await Purchase.find().select("grandTotal qty paymentStatus").lean();
+  const allPurchases = await Purchase.find().select("grandTotal paidAmount qty").lean();
   const totalPurchaseSpend = allPurchases.reduce((acc, p) => acc + (p.grandTotal || 0), 0);
   const totalInwardTons = allPurchases.reduce((acc, p) => acc + (p.qty || 0), 0);
-  const pendingPurchasePayables = allPurchases
-    .filter((p) => p.paymentStatus === "UNPAID" || p.paymentStatus === "PARTIAL")
-    .reduce((acc, p) => acc + (p.grandTotal || 0), 0);
+  // Still owed to vendors: opening balances + unpaid part of each purchase (same rule as the vendor screens)
+  const vendorOpening = await Vendor.find().select("openingBalance").lean();
+  const pendingPurchasePayables =
+    vendorOpening.reduce((acc, v) => acc + (v.openingBalance || 0), 0) +
+    allPurchases.reduce((acc, p) => acc + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0);
 
   const currentDateStr = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -61,7 +64,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-8 space-y-6">
       {/* Top Welcome Hero Banner */}
       <div className="relative overflow-hidden glass-card rounded-3xl p-5 sm:p-8 border border-slate-800/80 shadow-2xl">
         {/* Glow ambient background lights */}
@@ -270,6 +273,7 @@ export default async function DashboardPage() {
               {bills.map((bill: any) => {
                 const status = bill.paymentStatus || "UNPAID";
                 const isPaid = status === "PAID";
+                const isPartial = status === "PARTIAL";
                 return (
                   <div
                     key={bill._id.toString()}
@@ -286,11 +290,13 @@ export default async function DashboardPage() {
                         className={`text-[9px] font-black px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
                           isPaid
                             ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/35"
+                            : isPartial
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/35"
                             : "bg-red-500/15 text-red-400 border-red-500/35"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : "bg-red-400"}`} />
-                        {isPaid ? "PAID" : "UNPAID"}
+                        <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : isPartial ? "bg-amber-400" : "bg-red-400"}`} />
+                        {isPaid ? "PAID" : isPartial ? "PARTIAL" : "UNPAID"}
                       </span>
                     </div>
 
@@ -371,6 +377,7 @@ export default async function DashboardPage() {
               {recentPurchases.map((purchase: any) => {
                 const status = purchase.paymentStatus || "UNPAID";
                 const isPaid = status === "PAID";
+                const isPartial = status === "PARTIAL";
                 return (
                   <div
                     key={purchase._id.toString()}
@@ -387,11 +394,13 @@ export default async function DashboardPage() {
                         className={`text-[9px] font-black px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
                           isPaid
                             ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/35"
+                            : isPartial
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/35"
                             : "bg-red-500/15 text-red-400 border-red-500/35"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : "bg-red-400"}`} />
-                        {isPaid ? "PAID" : "UNPAID"}
+                        <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : isPartial ? "bg-amber-400" : "bg-red-400"}`} />
+                        {isPaid ? "PAID" : isPartial ? "PARTIAL" : "UNPAID"}
                       </span>
                     </div>
 

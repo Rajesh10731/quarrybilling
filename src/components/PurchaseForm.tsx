@@ -244,7 +244,7 @@ export default function PurchaseForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto p-3 sm:p-6 pb-mobile-form">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-7xl mx-auto p-3 sm:p-6 pb-mobile-form">
       {/* Top Header Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/90 p-3.5 sm:p-4 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div className="flex items-center space-x-3">
@@ -668,7 +668,7 @@ export default function PurchaseForm({
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-xl border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)] flex flex-col justify-center">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-xl border border-emerald-500/40 shadow-[0_4px_14px_rgba(140,199,166,0.2)] flex flex-col justify-center">
                 <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Net Stone Weight (Calculated):</span>
                 <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400 tracking-tight mt-0.5">
                   {formData.netWeight?.toFixed(2)} <span className="text-base text-emerald-300 font-sans font-bold">{formData.unit}</span>
@@ -809,6 +809,12 @@ export default function PurchaseForm({
             <span className="tracking-tight">Payment Settlement</span>
           </div>
 
+          {isEditing && (
+            <p className="text-xs text-slate-400 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+              Payments are managed in the payment history on the purchase page. Paid so far: ₹{formatCurrency(formData.paidAmount || 0)} ({formData.paymentStatus}).
+            </p>
+          )}
+          <fieldset disabled={isEditing} className={`space-y-4 ${isEditing ? "hidden" : ""}`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
@@ -899,6 +905,8 @@ export default function PurchaseForm({
               />
             </div>
           </div>
+
+          </fieldset>
 
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1">

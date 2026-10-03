@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { LorryBill } from "@/models/LorryBill";
 import { getSession } from "@/lib/auth";
+import { containsText, toISODate } from "@/lib/ledger";
 
 export async function GET(req: Request) {
   try {
@@ -19,11 +20,11 @@ export async function GET(req: Request) {
     if (query) {
       filter = {
         $or: [
-          { lorryBillNo: { $regex: query, $options: "i" } },
-          { customerName: { $regex: query, $options: "i" } },
-          { vehicleNo: { $regex: query, $options: "i" } },
-          { material: { $regex: query, $options: "i" } },
-          { deliveryPlace: { $regex: query, $options: "i" } },
+          { lorryBillNo: containsText(query) },
+          { customerName: containsText(query) },
+          { vehicleNo: containsText(query) },
+          { material: containsText(query) },
+          { deliveryPlace: containsText(query) },
         ],
       };
     }
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    if (body.date) body.date = toISODate(body.date);
+    if (body.paymentDate) body.paymentDate = toISODate(body.paymentDate);
 
     if (!body.lorryBillNo || !body.date) {
       return NextResponse.json(

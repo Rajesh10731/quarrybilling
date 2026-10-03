@@ -5,6 +5,7 @@ import { Bill } from "@/models/Bill";
 import { Customer } from "@/models/Customer";
 import { CompanySettings } from "@/models/CompanySettings";
 import { getSession } from "@/lib/auth";
+import { containsText, exactName, round2, toISODate } from "@/lib/ledger";
 
 export async function GET(req: Request) {
   try {
@@ -14,8 +15,8 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const fromDate = searchParams.get("fromDate") || "";
-    const toDate = searchParams.get("toDate") || "";
+    const fromDate = toISODate(searchParams.get("fromDate"));
+    const toDate = toISODate(searchParams.get("toDate"));
     const customerName = searchParams.get("customerName") || "";
     const query = searchParams.get("query") || "";
 
@@ -32,16 +33,16 @@ export async function GET(req: Request) {
     }
 
     if (customerName) {
-      paymentFilter.customerName = { $regex: `^${customerName.trim()}$`, $options: "i" };
+      paymentFilter.customerName = exactName(customerName);
     }
 
     if (query) {
       paymentFilter.$or = [
-        { customerName: { $regex: query, $options: "i" } },
-        { invoiceNo: { $regex: query, $options: "i" } },
-        { paymentNumber: { $regex: query, $options: "i" } },
-        { referenceNo: { $regex: query, $options: "i" } },
-        { notes: { $regex: query, $options: "i" } },
+        { customerName: containsText(query) },
+        { invoiceNo: containsText(query) },
+        { paymentNumber: containsText(query) },
+        { referenceNo: containsText(query) },
+        { notes: containsText(query) },
       ];
     }
 
@@ -55,8 +56,7 @@ export async function GET(req: Request) {
     const billFilter: any = {};
     if (customerName) {
       billFilter.$or = [
-        { "billedTo.name": { $regex: `^${customerName.trim()}$`, $options: "i" } },
-        { "shippedTo.name": { $regex: `^${customerName.trim()}$`, $options: "i" } },
+        { "billedTo.name": exactName(customerName) },
       ];
     }
     const allBills = await Bill.find(billFilter).sort({ date: -1, createdAt: -1 });
@@ -65,6 +65,7 @@ export async function GET(req: Request) {
     // Map customer name -> { totalBilled, totalPaid, balanceDue, billsCount, lastPaymentDate }
     const customerMap = new Map<string, {
       name: string;
+      openingBalance: number;
       totalBilled: number;
       totalPaid: number;
       balanceDue: number;
@@ -78,6 +79,7 @@ export async function GET(req: Request) {
       const cName = c.name.trim().toUpperCase();
       customerMap.set(cName, {
         name: c.name.trim(),
+        openingBalance: c.openingBalance || 0,
         totalBilled: 0,
         totalPaid: 0,
         balanceDue: 0,
@@ -93,6 +95,7 @@ export async function GET(req: Request) {
       if (!customerMap.has(bCust)) {
         customerMap.set(bCust, {
           name: b.billedTo?.name?.trim() || bCust,
+          openingBalance: 0,
           totalBilled: 0,
           totalPaid: 0,
           balanceDue: 0,
@@ -125,12 +128,13 @@ export async function GET(req: Request) {
     // Compute balanceDue for all customers
     const customerSummaries = Array.from(customerMap.values()).map((c) => ({
       ...c,
-      balanceDue: Math.max(0, c.totalBilled - c.totalPaid),
+      // Owed = opening balance + everything billed - everything received
+      balanceDue: Math.max(0, round2(c.openingBalance + c.totalBilled - c.totalPaid)),
     })).filter((c) => {
       if (customerName) {
         return c.name.toLowerCase() === customerName.toLowerCase();
       }
-      return c.totalBilled > 0 || c.totalPaid > 0;
+      return c.totalBilled > 0 || c.totalPaid > 0 || c.openingBalance !== 0;
     }).sort((a, b) => b.balanceDue - a.balanceDue);
 
     // 6. Overall KPIs for filtered view

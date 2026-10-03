@@ -68,41 +68,49 @@ export default function PurchaseDetailPage() {
       .catch((err) => console.error(err));
   }, [id]);
 
+  // Adds one installment to the payment history; the server refuses overpayment
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!purchase) return;
 
     setSubmittingPayment(true);
     try {
-      const addAmount = parseFloat(paymentAmount) || 0;
-      const currentPaid = purchase.paidAmount || 0;
-      const newTotalPaid = currentPaid + addAmount;
-      const newStatus =
-        newTotalPaid >= purchase.grandTotal ? "PAID" : newTotalPaid > 0 ? "PARTIAL" : "UNPAID";
-
-      const res = await fetch(`/api/purchases/${id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/purchases/${id}/payments`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paidAmount: newTotalPaid,
-          paymentStatus: newStatus,
-          paymentMode,
-          paymentDate,
-          paymentRef,
-          notes: paymentNotes || purchase.notes,
+          amount: parseFloat(paymentAmount) || 0,
+          mode: paymentMode,
+          date: paymentDate,
+          ref: paymentRef,
+          notes: paymentNotes,
         }),
       });
 
       if (res.ok) {
         setShowPaymentModal(false);
+        setPaymentRef("");
+        setPaymentNotes("");
         fetchPurchase();
       } else {
-        alert("Failed to update payment");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to record payment");
       }
     } catch (err) {
       alert("Error recording payment");
     } finally {
       setSubmittingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm("Delete this payment installment? The balance payable will increase.")) return;
+    const res = await fetch(`/api/purchases/${id}/payments?paymentId=${paymentId}`, { method: "DELETE" });
+    if (res.ok) {
+      fetchPurchase();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.message || "Failed to delete payment");
     }
   };
 
@@ -262,7 +270,7 @@ export default function PurchaseDetailPage() {
                 {pendingAmount > 0 && (
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all"
+                    className="px-4 py-2 bg-emerald-400 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all"
                   >
                     Clear Balance
                   </button>
@@ -296,13 +304,65 @@ export default function PurchaseDetailPage() {
                 </span>
               </div>
             </div>
+
+            {/* Payment history: every installment paid to the vendor */}
+            <div className="pt-4 mt-4 border-t border-slate-800">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Payment History</h3>
+                {pendingAmount > 0 && (
+                  <button
+                    onClick={() => setShowPaymentModal(true)}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs"
+                  >
+                    + Add Payment
+                  </button>
+                )}
+              </div>
+              {((purchase as any).payments || []).length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No payments recorded yet.</p>
+              ) : (
+                <div className="overflow-x-auto touch-scroll">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="text-slate-500 uppercase text-[10px] border-b border-slate-800">
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Mode</th>
+                        <th className="py-2 pr-3">Ref / UTR</th>
+                        <th className="py-2 pr-3">Notes</th>
+                        <th className="py-2 pr-3 text-right">Amount</th>
+                        <th className="py-2 text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {((purchase as any).payments as any[]).map((p) => (
+                        <tr key={p._id}>
+                          <td className="py-2 pr-3 text-slate-300">{formatDate(p.date)}</td>
+                          <td className="py-2 pr-3 text-slate-300">{p.mode}</td>
+                          <td className="py-2 pr-3 text-slate-400">{p.ref || "--"}</td>
+                          <td className="py-2 pr-3 text-slate-400">{p.notes || "--"}</td>
+                          <td className="py-2 pr-3 text-right font-bold text-emerald-400">₹{formatCurrency(p.amount)}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              onClick={() => handleDeletePayment(p._id)}
+                              className="text-red-400 hover:text-red-300 text-[11px] font-semibold"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Record Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-400/35 backdrop-blur-[2px] p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in duration-200">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-white font-black text-lg">

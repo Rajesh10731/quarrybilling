@@ -62,30 +62,14 @@ export default function BillsListPage() {
         setBills((prev) => prev.filter((b) => b._id !== id));
         setConfirmDeleteId(null);
       } else {
-        alert("Failed to delete bill");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to delete bill");
+        setConfirmDeleteId(null);
       }
     } catch (err) {
       alert("Error deleting bill");
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const handleTogglePayment = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "PAID" ? "UNPAID" : "PAID";
-    try {
-      const res = await fetch(`/api/bills/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: newStatus }),
-      });
-      if (res.ok) {
-        setBills((prev) =>
-          prev.map((b) => (b._id === id ? { ...b, paymentStatus: newStatus } : b))
-        );
-      }
-    } catch (err) {
-      console.error("Failed to update payment status", err);
     }
   };
 
@@ -110,7 +94,7 @@ export default function BillsListPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
+    <div className="max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -243,6 +227,7 @@ export default function BillsListPage() {
         ) : (
           filteredBills.map((bill) => {
             const isPaid = bill.paymentStatus === "PAID";
+            const isPartial = bill.paymentStatus === "PARTIAL";
             return (
               <div
                 key={bill._id}
@@ -310,15 +295,18 @@ export default function BillsListPage() {
                   </div>
 
                   <button
-                    onClick={() => handleTogglePayment(bill._id, bill.paymentStatus || "UNPAID")}
+                    onClick={() => router.push(`/bills/${bill._id}`)}
+                    title="Open bill to view or record payments"
                     className={`px-3 py-2 rounded-xl text-xs font-black border flex items-center gap-1.5 shadow-sm active:scale-95 transition-all ${
                       isPaid
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                        : isPartial
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
                         : "bg-red-500/20 text-red-400 border-red-500/40"
                     }`}
                   >
                     {isPaid ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{isPaid ? "PAID" : "UNPAID"}</span>
+                    <span>{bill.paymentStatus || "UNPAID"}</span>
                   </button>
                 </div>
 
@@ -406,7 +394,7 @@ export default function BillsListPage() {
                   return (
                     <tr key={bill._id} className="hover:bg-slate-800/40 transition-colors group">
                       <td className="p-3.5 font-extrabold text-amber-400">{bill.invoiceNo}</td>
-                      <td className="p-3.5 text-slate-300 font-medium">{bill.date}</td>
+                      <td className="p-3.5 text-slate-300 font-medium">{formatDate(bill.date)}</td>
                       <td className="p-3.5 font-bold text-white uppercase tracking-tight">{bill.billedTo?.name || "--"}</td>
                       <td className="p-3.5">
                         <span className="vehicle-plate text-[11px]">
@@ -420,8 +408,8 @@ export default function BillsListPage() {
                       <td className="p-3.5 font-black text-emerald-400 text-sm">₹{formatCurrency(bill.grandTotal)}</td>
                       <td className="p-3.5">
                         <button
-                          onClick={() => handleTogglePayment(bill._id, status)}
-                          title="Click to toggle Paid/Unpaid"
+                          onClick={() => router.push(`/bills/${bill._id}`)}
+                          title="Open bill to view or record payments"
                           className={`px-3 py-1.5 rounded-full text-[10px] font-black border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                             status === "PAID"
                               ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/35 hover:bg-emerald-500/25"

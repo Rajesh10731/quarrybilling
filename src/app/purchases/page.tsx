@@ -62,41 +62,13 @@ export default function PurchasesListPage() {
         setPurchases((prev) => prev.filter((p) => p._id !== id));
         setConfirmDeleteId(null);
       } else {
-        alert("Failed to delete purchase record");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to delete purchase record");
       }
     } catch (err) {
       alert("Error deleting purchase");
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const handleTogglePayment = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "PAID" ? "UNPAID" : "PAID";
-    const target = purchases.find((p) => p._id === id);
-    const newPaidAmount = newStatus === "PAID" ? target?.grandTotal || 0 : 0;
-
-    try {
-      const res = await fetch(`/api/purchases/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentStatus: newStatus,
-          paidAmount: newPaidAmount,
-        }),
-      });
-
-      if (res.ok) {
-        setPurchases((prev) =>
-          prev.map((p) =>
-            p._id === id
-              ? { ...p, paymentStatus: newStatus, paidAmount: newPaidAmount }
-              : p
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Failed to toggle payment", err);
     }
   };
 
@@ -125,7 +97,7 @@ export default function PurchasesListPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
+    <div className="max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -289,6 +261,7 @@ export default function PurchasesListPage() {
         ) : (
           filteredPurchases.map((p) => {
             const isPaid = p.paymentStatus === "PAID";
+            const isPartial = p.paymentStatus === "PARTIAL";
             return (
               <div
                 key={p._id}
@@ -365,15 +338,18 @@ export default function PurchasesListPage() {
 
                   {/* Big Touch-Friendly Payment Button */}
                   <button
-                    onClick={() => handleTogglePayment(p._id, p.paymentStatus || "UNPAID")}
+                    onClick={() => router.push(`/purchases/${p._id}`)}
+                    title="Open purchase to view or record payments"
                     className={`px-3 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 shadow-sm active:scale-95 transition-all ${
                       isPaid
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                        : isPartial
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
                         : "bg-red-500/20 text-red-400 border-red-500/40"
                     }`}
                   >
                     {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                    <span>{isPaid ? "PAID" : "UNPAID"}</span>
+                    <span>{isPaid ? "PAID" : isPartial ? "PARTIAL" : "UNPAID"}</span>
                   </button>
                 </div>
 
@@ -531,8 +507,8 @@ export default function PurchasesListPage() {
                     {/* Payment Status (Click to Toggle) */}
                     <td className="p-3.5 text-center">
                       <button
-                        onClick={() => handleTogglePayment(p._id, p.paymentStatus || "UNPAID")}
-                        title="Click to toggle Paid / Unpaid"
+                        onClick={() => router.push(`/purchases/${p._id}`)}
+                    title="Open purchase to view or record payments"
                         className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer ${
                           p.paymentStatus === "PAID"
                             ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/35 hover:bg-emerald-500/25"

@@ -52,24 +52,6 @@ export default function VendorStatementPage() {
     fetchStatement();
   }, [id]);
 
-  const handleTogglePayment = async (purchaseId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "PAID" ? "UNPAID" : "PAID";
-    const target = data?.purchases?.find((p: any) => p._id === purchaseId);
-    const newPaidAmount = newStatus === "PAID" ? target?.grandTotal || 0 : 0;
-
-    try {
-      const res = await fetch(`/api/purchases/${purchaseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: newStatus, paidAmount: newPaidAmount }),
-      });
-      if (res.ok) {
-        fetchStatement();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handlePrint = () => {
     window.print();
@@ -77,7 +59,7 @@ export default function VendorStatementPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-12 text-center text-slate-400">
+      <div className="max-w-[1600px] mx-auto p-12 text-center text-slate-400">
         Loading vendor statement & inward history...
       </div>
     );
@@ -85,7 +67,7 @@ export default function VendorStatementPage() {
 
   if (!data || !data.vendor) {
     return (
-      <div className="max-w-6xl mx-auto p-12 text-center text-slate-400 space-y-4">
+      <div className="max-w-[1600px] mx-auto p-12 text-center text-slate-400 space-y-4">
         <p>Vendor details not found.</p>
         <Link
           href="/vendors"
@@ -101,7 +83,7 @@ export default function VendorStatementPage() {
   const { vendor, purchases, summary } = data;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Top Header Controls (Hidden on Print) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow-xl print:hidden">
         <div className="flex items-center space-x-3">
@@ -181,11 +163,14 @@ export default function VendorStatementPage() {
           >
             ₹{formatCurrency(summary.pendingBalance || 0)}
           </div>
+          {summary.openingBalance ? (
+            <div className="text-[10px] text-slate-500 mt-1">incl. opening balance ₹{formatCurrency(summary.openingBalance)}</div>
+          ) : null}
         </div>
       </div>
 
       {/* Printable Sheet Layout */}
-      <div className="bg-white text-black p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-2xl print:border-none print:p-0 print:shadow-none font-sans text-xs">
+      <div className="paper bg-white text-black p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-2xl print:border-none print:p-0 print:shadow-none font-sans text-xs">
         {/* Company Header */}
         <div className="border-b-2 border-black pb-4 text-center">
           <div className="text-2xl font-black uppercase tracking-wider">
@@ -225,6 +210,11 @@ export default function VendorStatementPage() {
             <div>
               <strong>Total Lorry Loads Received:</strong> {purchases.length}
             </div>
+            {summary.openingBalance ? (
+              <div>
+                <strong>Opening Balance:</strong> ₹{formatCurrency(summary.openingBalance)}
+              </div>
+            ) : null}
             <div>
               <strong>Total Purchased Amount:</strong> ₹{formatCurrency(summary.totalAmount)}
             </div>
@@ -299,7 +289,8 @@ export default function VendorStatementPage() {
                   <td className="p-2 border-r border-black text-center">
                     <button
                       type="button"
-                      onClick={() => handleTogglePayment(p._id, p.paymentStatus)}
+                      onClick={() => router.push(`/purchases/${p._id}`)}
+                      title="Open purchase to view or record payments"
                       className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase print:border-none cursor-pointer ${
                         p.paymentStatus === "PAID"
                           ? "bg-emerald-100 text-emerald-800"
@@ -307,7 +298,6 @@ export default function VendorStatementPage() {
                           ? "bg-blue-100 text-blue-800"
                           : "bg-red-100 text-red-800"
                       }`}
-                      title="Click to toggle Paid/Unpaid"
                     >
                       {p.paymentStatus || "UNPAID"}
                     </button>

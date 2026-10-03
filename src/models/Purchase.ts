@@ -1,5 +1,15 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface IPurchasePayment {
+  _id?: mongoose.Types.ObjectId;
+  amount: number;
+  date: string;
+  mode: string;
+  ref?: string;
+  notes?: string;
+  createdAt?: Date;
+}
+
 export interface IPurchase extends Document {
   inwardNo: string;
   date: string;
@@ -44,11 +54,23 @@ export interface IPurchase extends Document {
   paymentMode?: "Cash" | "UPI" | "Bank Transfer" | "Cheque" | "Credit" | string;
   paymentRef?: string;
   paymentDate?: string;
+  payments: IPurchasePayment[];
   notes?: string;
 
   createdAt: Date;
   updatedAt: Date;
 }
+
+const PurchasePaymentSchema = new Schema<IPurchasePayment>(
+  {
+    amount: { type: Number, required: true, min: 0.01 },
+    date: { type: String, required: true },
+    mode: { type: String, default: "Cash" },
+    ref: { type: String, default: "" },
+    notes: { type: String, default: "" },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
 
 const PurchaseSchema = new Schema<IPurchase>(
   {
@@ -99,6 +121,8 @@ const PurchaseSchema = new Schema<IPurchase>(
     paymentMode: { type: String, default: "Cash" },
     paymentRef: { type: String, default: "" },
     paymentDate: { type: String, default: "" },
+    // Every payment made to the vendor for this load; paidAmount/paymentStatus are derived from it
+    payments: { type: [PurchasePaymentSchema], default: [] },
     notes: { type: String, default: "" },
   },
   { timestamps: true }

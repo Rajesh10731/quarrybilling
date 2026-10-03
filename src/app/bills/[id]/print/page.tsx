@@ -65,7 +65,7 @@ export default function PrintBillPage() {
       </div>
 
       {/* Printable Sheet */}
-      <div className="bg-white p-2 sm:p-8 rounded-xl max-w-4xl mx-auto shadow-2xl print:shadow-none print:p-0 print:m-0 overflow-x-auto touch-scroll">
+      <div className="paper bg-white p-2 sm:p-8 rounded-xl max-w-4xl mx-auto shadow-2xl print:shadow-none print:p-0 print:m-0 overflow-x-auto touch-scroll">
         <BillPrintView bill={bill} />
       </div>
     </div>

@@ -99,20 +99,25 @@ export default function BillDetailPage() {
   }
 
   const grandTotal = bill.grandTotal || 0;
-  const totalPaid = billPayments.reduce((sum, p) => sum + (p.amount || 0), 0) || (bill.paidAmount || 0);
+  const totalPaid = billPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const balanceRemaining = Math.max(0, grandTotal - totalPaid);
 
-  const handleUpdatePaymentStatus = async (newStatus: "UNPAID" | "PAID" | "PARTIAL") => {
+  // Records a receipt for the whole remaining balance
+  const handleMarkPaid = async () => {
     if (!bill || !bill._id) return;
+    if (!confirm(`Record a Cash receipt of ₹${formatCurrency(balanceRemaining)} dated today to mark this bill fully paid?`)) return;
     try {
       const res = await fetch(`/api/bills/${bill._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: newStatus }),
+        body: JSON.stringify({ markPaid: true, paymentMode: "Cash" }),
       });
       if (res.ok) {
-        setBill({ ...bill, paymentStatus: newStatus } as any);
         fetchBill();
+        fetchPayments();
+      } else {
+        const errData = await res.json();
+        alert(errData.message || "Failed to mark bill as paid");
       }
     } catch (err) {
       console.error(err);
@@ -169,17 +174,18 @@ export default function BillDetailPage() {
         fetchBill();
         fetchPayments();
       } else {
-        alert("Failed to delete payment");
+        const errData = await res.json();
+        alert(errData.message || "Failed to delete payment");
       }
     } catch (err) {
       alert("Error deleting payment");
     }
   };
 
-  const status = (bill as any)?.paymentStatus || (balanceRemaining === 0 ? "PAID" : totalPaid > 0 ? "PARTIAL" : "UNPAID");
+  const status = (bill as any)?.paymentStatus || "UNPAID";
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
       {/* Top Header Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900 border border-slate-800 p-3.5 sm:p-4 rounded-2xl">
         <div className="flex items-center space-x-3 min-w-0">
@@ -278,20 +284,13 @@ export default function BillDetailPage() {
               <span>+ Record Payment</span>
             </button>
 
-            {status !== "PAID" ? (
+            {status !== "PAID" && (
               <button
-                onClick={() => handleUpdatePaymentStatus("PAID")}
+                onClick={handleMarkPaid}
                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl border border-slate-700 transition-all"
-                title="Quick mark as full paid"
+                title="Record a receipt for the full remaining balance"
               >
                 Mark Paid
-              </button>
-            ) : (
-              <button
-                onClick={() => handleUpdatePaymentStatus("UNPAID")}
-                className="px-3 py-2 bg-red-950/60 hover:bg-red-900 text-red-300 font-semibold text-xs rounded-xl border border-red-800 transition-all"
-              >
-                Mark Unpaid
               </button>
             )}
 
@@ -424,7 +423,7 @@ export default function BillDetailPage() {
             <span>Exact Invoice Preview</span>
             <span className="text-[10px] text-amber-400/80 font-normal sm:hidden">• Swipe horizontally to view full receipt</span>
           </div>
-          <div className="bg-white p-2 sm:p-6 rounded-xl shadow-inner overflow-x-auto touch-scroll">
+          <div className="paper bg-white p-2 sm:p-6 rounded-xl shadow-inner overflow-x-auto touch-scroll">
             <BillPrintView bill={bill} />
           </div>
         </div>
@@ -432,7 +431,7 @@ export default function BillDetailPage() {
 
       {/* Add Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-400/35 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
           <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-slate-800 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>

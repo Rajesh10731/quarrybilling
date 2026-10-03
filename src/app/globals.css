@@ -1,18 +1,158 @@
 @import "tailwindcss";
 
-:root {
-  --background: #020617;
-  --foreground: #f8fafc;
-  --amber-primary: #f59e0b;
-  --amber-glow: rgba(245, 158, 11, 0.25);
+/*
+ * Soft pastel theme.
+ * The app's components use Tailwind's slate/amber/emerald/red/blue classes
+ * that were designed for a dark UI. Instead of rewriting every class, the
+ * colour tokens are remapped here for the screen:
+ *   slate   -> light blue-grey neutrals (scale inverted: 950 = page, 50 = darkest text)
+ *   amber   -> periwinkle (primary accent)
+ *   emerald -> mint (paid / success)
+ *   red     -> blush (unpaid / danger)
+ *   blue    -> sky
+ *   white   -> charcoal (headings that were white on dark)
+ * Printing, and anything inside `.paper` (bill / slip / statement previews),
+ * keeps Tailwind's original palette so documents look the same as before.
+ */
+@media screen {
+  :root {
+    color-scheme: light;
+
+    --color-white: #262a36;
+
+    --color-slate-50: #262a36;
+    --color-slate-100: #2f3340;
+    --color-slate-200: #3b3f4c;
+    --color-slate-300: #4e5363;
+    --color-slate-400: #6b7083;
+    --color-slate-500: #8b90a0;
+    --color-slate-600: #a0a5b5;
+    --color-slate-700: #d3d7e3;
+    --color-slate-800: #e4e7f0;
+    --color-slate-900: #ffffff;
+    --color-slate-950: #f6f7fb;
+
+    --color-amber-50: #f3f4fd;
+    --color-amber-100: #e6e9fa;
+    --color-amber-200: #d3d8f5;
+    --color-amber-300: #5e6cc0;
+    --color-amber-400: #5a68be;
+    --color-amber-500: #6676cc;
+    --color-amber-600: #5563b8;
+    --color-amber-700: #c5ccf0;
+    --color-amber-800: #3f4a94;
+    --color-amber-900: #3a4489;
+    --color-amber-950: #eef0fc;
+
+    --color-emerald-50: #eef8f2;
+    --color-emerald-100: #e1f3e9;
+    --color-emerald-200: #cbead8;
+    --color-emerald-300: #2f7a55;
+    --color-emerald-400: #3a8661;
+    --color-emerald-500: #8cc7a6;
+    --color-emerald-600: #2f7a55;
+    --color-emerald-700: #2b6e4d;
+    --color-emerald-800: #b5dec7;
+    --color-emerald-900: #ddf1e6;
+    --color-emerald-950: #eef8f2;
+
+    --color-red-50: #fdf2f2;
+    --color-red-100: #fbe6e6;
+    --color-red-200: #f6d3d3;
+    --color-red-300: #a94848;
+    --color-red-400: #b25252;
+    --color-red-500: #eba6a6;
+    --color-red-600: #a94848;
+    --color-red-700: #9a4040;
+    --color-red-800: #efc2c2;
+    --color-red-900: #f5d8d8;
+    --color-red-950: #fdf1f1;
+
+    --color-blue-50: #f0f6fd;
+    --color-blue-100: #e3eefa;
+    --color-blue-200: #cfe1f5;
+    --color-blue-300: #3a6fa8;
+    --color-blue-400: #3f75b0;
+    --color-blue-500: #8db8e6;
+    --color-blue-600: #3f75b0;
+    --color-blue-700: #345f90;
+    --color-blue-800: #2e5482;
+    --color-blue-900: #dce9f8;
+    --color-blue-950: #eef5fc;
+  }
+
+  /* Printable documents keep the original black-on-white palette */
+  .paper {
+    color-scheme: light;
+    --color-red-50: oklch(97.1% 0.013 17.38);
+    --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-200: oklch(88.5% 0.062 18.334);
+    --color-red-300: oklch(80.8% 0.114 19.571);
+    --color-red-400: oklch(70.4% 0.191 22.216);
+    --color-red-500: oklch(63.7% 0.237 25.331);
+    --color-red-600: oklch(57.7% 0.245 27.325);
+    --color-red-700: oklch(50.5% 0.213 27.518);
+    --color-red-800: oklch(44.4% 0.177 26.899);
+    --color-red-900: oklch(39.6% 0.141 25.723);
+    --color-red-950: oklch(25.8% 0.092 26.042);
+    --color-amber-50: oklch(98.7% 0.022 95.277);
+    --color-amber-100: oklch(96.2% 0.059 95.617);
+    --color-amber-200: oklch(92.4% 0.12 95.746);
+    --color-amber-300: oklch(87.9% 0.169 91.605);
+    --color-amber-400: oklch(82.8% 0.189 84.429);
+    --color-amber-500: oklch(76.9% 0.188 70.08);
+    --color-amber-600: oklch(66.6% 0.179 58.318);
+    --color-amber-700: oklch(55.5% 0.163 48.998);
+    --color-amber-800: oklch(47.3% 0.137 46.201);
+    --color-amber-900: oklch(41.4% 0.112 45.904);
+    --color-amber-950: oklch(27.9% 0.077 45.635);
+    --color-emerald-50: oklch(97.9% 0.021 166.113);
+    --color-emerald-100: oklch(95% 0.052 163.051);
+    --color-emerald-200: oklch(90.5% 0.093 164.15);
+    --color-emerald-300: oklch(84.5% 0.143 164.978);
+    --color-emerald-400: oklch(76.5% 0.177 163.223);
+    --color-emerald-500: oklch(69.6% 0.17 162.48);
+    --color-emerald-600: oklch(59.6% 0.145 163.225);
+    --color-emerald-700: oklch(50.8% 0.118 165.612);
+    --color-emerald-800: oklch(43.2% 0.095 166.913);
+    --color-emerald-900: oklch(37.8% 0.077 168.94);
+    --color-emerald-950: oklch(26.2% 0.051 172.552);
+    --color-blue-50: oklch(97% 0.014 254.604);
+    --color-blue-100: oklch(93.2% 0.032 255.585);
+    --color-blue-200: oklch(88.2% 0.059 254.128);
+    --color-blue-300: oklch(80.9% 0.105 251.813);
+    --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-blue-500: oklch(62.3% 0.214 259.815);
+    --color-blue-600: oklch(54.6% 0.245 262.881);
+    --color-blue-700: oklch(48.8% 0.243 264.376);
+    --color-blue-800: oklch(42.4% 0.199 265.638);
+    --color-blue-900: oklch(37.9% 0.146 265.522);
+    --color-blue-950: oklch(28.2% 0.091 267.935);
+    --color-slate-50: oklch(98.4% 0.003 247.858);
+    --color-slate-100: oklch(96.8% 0.007 247.896);
+    --color-slate-200: oklch(92.9% 0.013 255.508);
+    --color-slate-300: oklch(86.9% 0.022 252.894);
+    --color-slate-400: oklch(70.4% 0.04 256.788);
+    --color-slate-500: oklch(55.4% 0.046 257.417);
+    --color-slate-600: oklch(44.6% 0.043 257.281);
+    --color-slate-700: oklch(37.2% 0.044 257.287);
+    --color-slate-800: oklch(27.9% 0.041 260.031);
+    --color-slate-900: oklch(20.8% 0.042 265.755);
+    --color-slate-950: oklch(12.9% 0.042 264.695);
+    --color-black: #000;
+    --color-white: #fff;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 8% 6%, rgba(124, 140, 217, 0.12) 0%, transparent 40%),
+      radial-gradient(circle at 92% 94%, rgba(140, 199, 166, 0.12) 0%, transparent 40%),
+      #f6f7fb;
+    color: #2f3340;
+  }
 }
 
 body {
-  background: 
-    radial-gradient(circle at 10% 10%, rgba(245, 158, 11, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 90% 90%, rgba(14, 165, 233, 0.04) 0%, transparent 45%),
-    #020617;
-  color: #f8fafc;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   overflow-x: hidden;
   padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
@@ -71,29 +211,29 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #060913;
+  background: #f6f7fb;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #d3d7e3;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #b1b6c5;
 }
 
 /* Selection Highlight */
 ::selection {
-  background: rgba(245, 158, 11, 0.3);
-  color: #fef3c7;
+  background: rgba(124, 140, 217, 0.25);
+  color: inherit;
 }
 
-/* Glassmorphism & High-End Card Utilities */
+/* Soft card utilities */
 .glass-card {
-  background: rgba(11, 18, 34, 0.78);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #e4e7f0;
+  box-shadow: 0 4px 18px -6px rgba(60, 70, 110, 0.1);
 }
 
 .glass-card-hover {
@@ -101,16 +241,33 @@ body {
 }
 .glass-card-hover:hover {
   transform: translateY(-2px);
-  border-color: rgba(245, 158, 11, 0.35);
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), 0 0 20px -5px rgba(245, 158, 11, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(124, 140, 217, 0.45);
+  box-shadow: 0 10px 24px -8px rgba(90, 104, 190, 0.18);
 }
 
 .glass-header {
-  background: rgba(2, 6, 23, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid #e4e7f0;
+  box-shadow: 0 2px 12px -4px rgba(60, 70, 110, 0.08);
+}
+
+/* Keep the scrollbar space reserved so the page does not jump when a menu locks scrolling */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Gentle fade for pop-ups */
+@keyframes soft-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.soft-fade-in {
+  animation: soft-fade-in 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .soft-fade-in { animation: none; }
 }
 
 /* Touch Friendly Tap Feedback */
@@ -127,26 +284,26 @@ body {
   letter-spacing: 0.06em;
   font-weight: 900;
   text-transform: uppercase;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
+  background: #fdf8e8;
+  border: 1px solid #ecdca8;
+  color: #6b5a24;
   border-radius: 0.5rem;
   padding: 0.2rem 0.55rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(60, 70, 110, 0.08);
 }
 
-/* Glow effects */
+/* Soft accent shadows (formerly neon glows) */
 .glow-amber {
-  box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 6px 18px -6px rgba(102, 118, 204, 0.35);
 }
 .glow-emerald {
-  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 6px 18px -6px rgba(140, 199, 166, 0.45);
 }
 .glow-blue {
-  box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 6px 18px -6px rgba(141, 184, 230, 0.45);
 }
 
 /* Print specific styles */
@@ -156,4 +313,3 @@ body {
     color: #000000 !important;
   }
 }
-

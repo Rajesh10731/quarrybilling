@@ -59,7 +59,7 @@ export async function GET() {
     if (!bill1) {
       await Bill.create({
         invoiceNo: "11439",
-        date: "03-06-2026",
+        date: "2026-06-03",
         vehicleNo: "TN74BK6973",
         deliveryPlace: "PARUTHIVILAI",
         loadingCharges: 4800,
@@ -106,7 +106,7 @@ export async function GET() {
     if (!bill2) {
       await Bill.create({
         invoiceNo: "11534",
-        date: "03-06-2026",
+        date: "2026-06-03",
         vehicleNo: "TN74BK7556",
         deliveryPlace: "PARUTHIVILAI",
         loadingCharges: 4800,

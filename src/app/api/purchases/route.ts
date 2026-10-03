@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Purchase } from "@/models/Purchase";
-import { Vendor } from "@/models/Vendor";
 import { getSession } from "@/lib/auth";
-import { numberToWords } from "@/lib/utils";
+import { LedgerError, containsText, errorResponse, round2, toISODate } from "@/lib/ledger";
+import { DERIVED_PAYMENT_FIELDS, assertUniqueInwardNo, computePurchaseTotals, linkVendor, syncPurchasePayments } from "@/lib/purchases";
 
 export async function GET(req: Request) {
   try {
@@ -25,12 +25,12 @@ export async function GET(req: Request) {
 
     if (query) {
       filter.$or = [
-        { inwardNo: { $regex: query, $options: "i" } },
-        { vendorName: { $regex: query, $options: "i" } },
-        { vehicleNo: { $regex: query, $options: "i" } },
-        { transportName: { $regex: query, $options: "i" } },
-        { material: { $regex: query, $options: "i" } },
-        { driverName: { $regex: query, $options: "i" } },
+        { inwardNo: containsText(query) },
+        { vendorName: containsText(query) },
+        { vehicleNo: containsText(query) },
+        { transportName: containsText(query) },
+        { material: containsText(query) },
+        { driverName: containsText(query) },
       ];
     }
 
@@ -44,8 +44,8 @@ export async function GET(req: Request) {
 
     if (fromDate || toDate) {
       filter.date = {};
-      if (fromDate) filter.date.$gte = fromDate;
-      if (toDate) filter.date.$lte = toDate;
+      if (fromDate) filter.date.$gte = toISODate(fromDate);
+      if (toDate) filter.date.$lte = toISODate(toDate);
     }
 
     const purchases = await Purchase.find(filter).sort({ createdAt: -1 });
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    if (!body.inwardNo || !body.date || !body.vendorName || !body.vehicleNo) {
+    if (!body.inwardNo?.trim() || !body.date || !body.vendorName?.trim() || !body.vehicleNo?.trim()) {
       return NextResponse.json(
         { message: "Inward No, Date, Vendor Name, and Vehicle No are required" },
         { status: 400 }
@@ -76,59 +76,32 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // Auto-calculate financial numbers if not provided
-    const qty = Number(body.qty) || 0;
-    const rate = Number(body.rate) || 0;
-    const materialAmount = Number(body.materialAmount) || qty * rate;
-    const lorryFreight = Number(body.lorryFreight) || 0;
-    const loadingCharges = Number(body.loadingCharges) || 0;
-    const taxAmount = Number(body.taxAmount) || 0;
-    const otherCharges = Number(body.otherCharges) || 0;
+    body.inwardNo = body.inwardNo.trim();
+    body.date = toISODate(body.date);
+    Object.assign(body, computePurchaseTotals(body));
+    await assertUniqueInwardNo(body.inwardNo);
 
-    const grandTotal =
-      Number(body.grandTotal) ||
-      materialAmount + (body.freightPaidBy === "Paid by Us" ? lorryFreight : 0) + loadingCharges + taxAmount + otherCharges;
-
-    body.materialAmount = materialAmount;
-    body.grandTotal = Math.round(grandTotal * 100) / 100;
-    if (!body.amountInWords || body.amountInWords === "Rupees Zero Only") {
-      body.amountInWords = numberToWords(body.grandTotal);
+    // What was paid at entry becomes the first installment; status is derived from it.
+    // Selecting PAID means the full amount; otherwise the typed paid amount is used.
+    const paidNow = round2(body.paymentStatus === "PAID" ? body.grandTotal : Number(body.paidAmount) || 0);
+    if (paidNow < 0) throw new LedgerError("Paid amount cannot be negative");
+    if (paidNow > body.grandTotal + 0.005) {
+      throw new LedgerError(`Paid amount ₹${paidNow} is more than the purchase total ₹${body.grandTotal}`);
     }
+    const firstPayment =
+      paidNow > 0
+        ? [{ amount: paidNow, date: toISODate(body.paymentDate) || body.date, mode: body.paymentMode || "Cash", ref: body.paymentRef || "", notes: "Paid at entry" }]
+        : [];
+    for (const field of DERIVED_PAYMENT_FIELDS) delete body[field];
 
-    if (!body.paymentStatus) {
-      body.paymentStatus = "UNPAID";
-    }
+    body.vendorId = await linkVendor(body);
 
-    // Auto-register or update Vendor details
-    if (body.vendorName) {
-      const vendorNameTrim = body.vendorName.trim();
-      const vendorData = {
-        name: vendorNameTrim,
-        mobile: body.vendorMobile || "",
-        gstin: body.vendorGstin || "",
-        address: body.vendorAddress || "",
-        quarryLocation: body.unloadingPoint || body.quarryLocation || "",
-      };
-
-      let existingVendor = await Vendor.findOne({
-        name: { $regex: `^${vendorNameTrim}$`, $options: "i" },
-      });
-
-      if (existingVendor) {
-        existingVendor = await Vendor.findByIdAndUpdate(existingVendor._id, vendorData, { new: true });
-        body.vendorId = existingVendor!._id;
-      } else {
-        const newVendor = await Vendor.create(vendorData);
-        body.vendorId = newVendor._id;
-      }
-    }
-
-    const newPurchase = await Purchase.create(body);
+    const newPurchase = new Purchase({ ...body, payments: firstPayment });
+    syncPurchasePayments(newPurchase);
+    await newPurchase.save();
     return NextResponse.json(newPurchase, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to create purchase entry" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to create purchase entry");
+    return NextResponse.json(body, { status });
   }
 }

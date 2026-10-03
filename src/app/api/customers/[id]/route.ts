@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Customer } from "@/models/Customer";
+import { Bill } from "@/models/Bill";
+import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
+import { exactName } from "@/lib/ledger";
 
 export async function GET(
   req: Request,
@@ -49,7 +52,7 @@ export async function PUT(
     await connectToDatabase();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, body, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
 
@@ -81,6 +84,23 @@ export async function DELETE(
 
     const { id } = await params;
     await connectToDatabase();
+
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return NextResponse.json({ message: "Customer not found" }, { status: 404 });
+    }
+
+    // Bills and receipts are linked by customer name; deleting would orphan them
+    const [billCount, paymentCount] = await Promise.all([
+      Bill.countDocuments({ "billedTo.name": exactName(customer.name) }),
+      Payment.countDocuments({ $or: [{ customerId: customer._id }, { customerName: exactName(customer.name) }] }),
+    ]);
+    if (billCount || paymentCount) {
+      return NextResponse.json(
+        { message: `Cannot delete ${customer.name}: they have ${billCount} bill(s) and ${paymentCount} payment receipt(s). Delete those first.` },
+        { status: 409 }
+      );
+    }
 
     const deletedCustomer = await Customer.findByIdAndDelete(id);
     if (!deletedCustomer) {

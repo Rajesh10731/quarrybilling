@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
-import { Customer } from "@/models/Customer";
+import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
+import {
+  assertUniqueInvoiceNo,
+  errorResponse,
+  recalcBill,
+  recordPayment,
+  round2,
+  sumBillPayments,
+  toISODate,
+  todayISO,
+  upsertCustomer,
+} from "@/lib/ledger";
 
 export async function GET(
   req: Request,
@@ -24,10 +35,8 @@ export async function GET(
 
     return NextResponse.json(bill);
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to fetch bill" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to fetch bill");
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -46,30 +55,33 @@ export async function PUT(
 
     await connectToDatabase();
 
-    // Auto store/update customer details if billedTo name is present
-    if (body.billedTo?.name) {
-      const custName = body.billedTo.name.trim();
-      const custData = {
-        name: custName,
-        mobile: body.billedTo.mobile || "",
-        gstin: body.billedTo.gstin || "",
-        address: body.billedTo.address || "",
-        deliveryPlace: body.deliveryPlace || body.station || "",
-      };
-      
-      const existingCustomer = await Customer.findOne({
-        name: { $regex: `^${custName}$`, $options: "i" },
-      });
+    // Payments are managed as receipts; an edit form must never overwrite them.
+    delete body.paymentStatus;
+    delete body.paidAmount;
+    delete body.paymentDate;
+    delete body._id;
 
-      if (existingCustomer) {
-        await Customer.findByIdAndUpdate(existingCustomer._id, custData);
-      } else {
-        await Customer.create(custData);
+    if (body.date) body.date = toISODate(body.date);
+    if (body.invoiceNo !== undefined) {
+      body.invoiceNo = String(body.invoiceNo).trim();
+      if (!body.invoiceNo) {
+        return NextResponse.json({ message: "Invoice No is required" }, { status: 400 });
       }
+      await assertUniqueInvoiceNo(body.invoiceNo, id);
+    }
+
+    if (body.billedTo?.name) {
+      await upsertCustomer({
+        name: body.billedTo.name,
+        mobile: body.billedTo.mobile,
+        gstin: body.billedTo.gstin,
+        address: body.billedTo.address,
+        deliveryPlace: body.deliveryPlace || body.station,
+      });
     }
 
     const updatedBill = await Bill.findByIdAndUpdate(id, body, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
 
@@ -77,15 +89,19 @@ export async function PUT(
       return NextResponse.json({ message: "Bill not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updatedBill);
+    // Total may have changed: re-derive PAID / PARTIAL / UNPAID from the receipts.
+    return NextResponse.json(await recalcBill(updatedBill._id));
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to update bill" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to update bill");
+    return NextResponse.json(body, { status });
   }
 }
 
+/**
+ * PATCH { markPaid: true, paymentMode?, date?, referenceNo? }
+ * Records a receipt for the remaining balance ("Mark Paid" buttons).
+ * Payment status can no longer be set directly — it always follows the receipts.
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -101,23 +117,36 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const updateFields: any = {};
-    if (body.paymentStatus !== undefined) updateFields.paymentStatus = body.paymentStatus;
-    if (body.paidAmount !== undefined) updateFields.paidAmount = body.paidAmount;
-    if (body.paymentDate !== undefined) updateFields.paymentDate = body.paymentDate;
-    if (body.paymentNotes !== undefined) updateFields.paymentNotes = body.paymentNotes;
-
-    const updatedBill = await Bill.findByIdAndUpdate(id, { $set: updateFields }, { new: true });
-    if (!updatedBill) {
+    const bill = await Bill.findById(id);
+    if (!bill) {
       return NextResponse.json({ message: "Bill not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updatedBill);
+    if (body.paymentNotes !== undefined) {
+      bill.paymentNotes = body.paymentNotes;
+      await bill.save();
+    }
+
+    if (body.markPaid) {
+      const balance = round2((bill.grandTotal || 0) - (await sumBillPayments(bill._id)));
+      if (balance <= 0) {
+        return NextResponse.json({ message: "This bill is already fully paid" }, { status: 400 });
+      }
+      await recordPayment({
+        billId: bill._id,
+        customerName: bill.billedTo?.name || "Customer",
+        amount: balance,
+        date: body.date || todayISO(),
+        paymentMode: body.paymentMode || "Cash",
+        referenceNo: body.referenceNo || "",
+        notes: "Marked as paid (full balance)",
+      });
+    }
+
+    return NextResponse.json(await recalcBill(bill._id));
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to update payment status" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to update payment status");
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -134,6 +163,17 @@ export async function DELETE(
     const { id } = await params;
     await connectToDatabase();
 
+    const receipts = await Payment.find({ billId: id }).select("amount").lean();
+    if (receipts.length) {
+      const total = round2(receipts.reduce((s, r) => s + (r.amount || 0), 0));
+      return NextResponse.json(
+        {
+          message: `This bill has ${receipts.length} payment receipt(s) totalling ₹${total}. Delete those receipts from the bill page first.`,
+        },
+        { status: 409 }
+      );
+    }
+
     const deletedBill = await Bill.findByIdAndDelete(id);
     if (!deletedBill) {
       return NextResponse.json({ message: "Bill not found" }, { status: 404 });
@@ -141,9 +181,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Bill deleted successfully" });
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to delete bill" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to delete bill");
+    return NextResponse.json(body, { status });
   }
 }

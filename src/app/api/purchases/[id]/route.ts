@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Purchase } from "@/models/Purchase";
-import { Vendor } from "@/models/Vendor";
 import { getSession } from "@/lib/auth";
-import { numberToWords } from "@/lib/utils";
+import { LedgerError, errorResponse, round2, toISODate } from "@/lib/ledger";
+import { DERIVED_PAYMENT_FIELDS, addPurchasePayment, assertUniqueInwardNo, computePurchaseTotals, linkVendor, syncPurchasePayments } from "@/lib/purchases";
 
 export async function GET(
   req: Request,
@@ -47,60 +47,40 @@ export async function PUT(
 
     await connectToDatabase();
 
-    const qty = Number(body.qty) || 0;
-    const rate = Number(body.rate) || 0;
-    const materialAmount = Number(body.materialAmount) || qty * rate;
-    const lorryFreight = Number(body.lorryFreight) || 0;
-    const loadingCharges = Number(body.loadingCharges) || 0;
-    const taxAmount = Number(body.taxAmount) || 0;
-    const otherCharges = Number(body.otherCharges) || 0;
-
-    const grandTotal =
-      Number(body.grandTotal) ||
-      materialAmount + (body.freightPaidBy === "Paid by Us" ? lorryFreight : 0) + loadingCharges + taxAmount + otherCharges;
-
-    body.materialAmount = materialAmount;
-    body.grandTotal = Math.round(grandTotal * 100) / 100;
-    body.amountInWords = numberToWords(body.grandTotal);
-
-    // Auto-update Vendor if name provided
-    if (body.vendorName) {
-      const vendorNameTrim = body.vendorName.trim();
-      const vendorData = {
-        name: vendorNameTrim,
-        mobile: body.vendorMobile || "",
-        gstin: body.vendorGstin || "",
-        address: body.vendorAddress || "",
-        quarryLocation: body.unloadingPoint || body.quarryLocation || "",
-      };
-
-      let existingVendor = await Vendor.findOne({
-        name: { $regex: `^${vendorNameTrim}$`, $options: "i" },
-      });
-
-      if (existingVendor) {
-        existingVendor = await Vendor.findByIdAndUpdate(existingVendor._id, vendorData, { new: true });
-        body.vendorId = existingVendor!._id;
-      } else {
-        const newVendor = await Vendor.create(vendorData);
-        body.vendorId = newVendor._id;
-      }
-    }
-
-    const updated = await Purchase.findByIdAndUpdate(id, body, { new: true });
-    if (!updated) {
+    const purchase = await Purchase.findById(id);
+    if (!purchase) {
       return NextResponse.json({ message: "Purchase not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updated);
+    // Payments are managed through the payment history, never by the edit form
+    for (const field of DERIVED_PAYMENT_FIELDS) delete body[field];
+    delete body._id;
+
+    if (body.date) body.date = toISODate(body.date);
+    if (body.inwardNo !== undefined) {
+      body.inwardNo = String(body.inwardNo).trim();
+      if (!body.inwardNo) throw new LedgerError("Inward No is required");
+      await assertUniqueInwardNo(body.inwardNo, id);
+    }
+    Object.assign(body, computePurchaseTotals({ ...purchase.toObject(), ...body }));
+    if (body.vendorName) body.vendorId = await linkVendor(body);
+
+    purchase.set(body);
+    // The total may have changed: re-derive PAID / PARTIAL / UNPAID
+    syncPurchasePayments(purchase);
+    await purchase.save();
+
+    return NextResponse.json(purchase);
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to update purchase" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to update purchase");
+    return NextResponse.json(body, { status });
   }
 }
 
+/**
+ * PATCH { markPaid: true, mode?, date?, ref? } pays the remaining balance as one installment.
+ * PATCH { notes } updates the remarks. Paid amount / status cannot be set directly.
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -116,25 +96,32 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const updateData: any = {};
-    if (body.paymentStatus !== undefined) updateData.paymentStatus = body.paymentStatus;
-    if (body.paidAmount !== undefined) updateData.paidAmount = body.paidAmount;
-    if (body.paymentMode !== undefined) updateData.paymentMode = body.paymentMode;
-    if (body.paymentRef !== undefined) updateData.paymentRef = body.paymentRef;
-    if (body.paymentDate !== undefined) updateData.paymentDate = body.paymentDate;
-    if (body.notes !== undefined) updateData.notes = body.notes;
-
-    const updated = await Purchase.findByIdAndUpdate(id, updateData, { new: true });
-    if (!updated) {
+    let purchase = await Purchase.findById(id);
+    if (!purchase) {
       return NextResponse.json({ message: "Purchase not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updated);
+    if (body.notes !== undefined) {
+      purchase.notes = body.notes;
+      await purchase.save();
+    }
+
+    if (body.markPaid) {
+      const balance = round2((purchase.grandTotal || 0) - (purchase.paidAmount || 0));
+      if (balance <= 0) throw new LedgerError("This purchase is already fully paid");
+      purchase = await addPurchasePayment(id, {
+        amount: balance,
+        date: body.date,
+        mode: body.mode || "Cash",
+        ref: body.ref,
+        notes: "Marked as paid (full balance)",
+      });
+    }
+
+    return NextResponse.json(purchase);
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to patch purchase" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to patch purchase");
+    return NextResponse.json(body, { status });
   }
 }
 

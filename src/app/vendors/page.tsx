@@ -89,7 +89,8 @@ export default function VendorsListPage() {
         });
         fetchVendors(search);
       } else {
-        alert("Failed to save vendor");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to save vendor");
       }
     } catch (err) {
       alert("Error saving vendor");
@@ -118,7 +119,9 @@ export default function VendorsListPage() {
         setVendors((prev) => prev.filter((v) => v._id !== id));
         setConfirmDeleteId(null);
       } else {
-        alert("Failed to delete vendor");
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to delete vendor");
+        setConfirmDeleteId(null);
       }
     } catch (err) {
       alert("Error deleting vendor");
@@ -140,7 +143,7 @@ export default function VendorsListPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
+    <div className="max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-8 space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -502,7 +505,7 @@ export default function VendorsListPage() {
 
       {/* Add / Edit Vendor Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-400/35 backdrop-blur-[2px] p-3 sm:p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-white font-black text-base sm:text-lg">

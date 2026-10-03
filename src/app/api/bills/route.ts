@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
-import { Customer } from "@/models/Customer";
 import { getSession } from "@/lib/auth";
+import {
+  assertUniqueInvoiceNo,
+  containsText,
+  errorResponse,
+  exactName,
+  recalcBill,
+  recordPayment,
+  round2,
+  toISODate,
+  upsertCustomer,
+} from "@/lib/ledger";
 
 export async function GET(req: Request) {
   try {
@@ -16,14 +26,18 @@ export async function GET(req: Request) {
 
     await connectToDatabase();
 
+    if (searchParams.get("nextInvoiceNo")) {
+      return NextResponse.json({ invoiceNo: await suggestNextInvoiceNo() });
+    }
+
     let filter = {};
     if (query) {
       filter = {
         $or: [
-          { invoiceNo: { $regex: query, $options: "i" } },
-          { "billedTo.name": { $regex: query, $options: "i" } },
-          { vehicleNo: { $regex: query, $options: "i" } },
-          { transport: { $regex: query, $options: "i" } },
+          { invoiceNo: containsText(query) },
+          { "billedTo.name": containsText(query) },
+          { vehicleNo: containsText(query) },
+          { transport: containsText(query) },
         ],
       };
     }
@@ -31,10 +45,8 @@ export async function GET(req: Request) {
     const bills = await Bill.find(filter).sort({ createdAt: -1 });
     return NextResponse.json(bills);
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to fetch bills" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to fetch bills");
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -47,7 +59,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    if (!body.invoiceNo || !body.date) {
+    if (!body.invoiceNo?.trim() || !body.date) {
       return NextResponse.json(
         { message: "Invoice No and Date are required" },
         { status: 400 }
@@ -56,39 +68,62 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // Default payment status to UNPAID (do NOT mark as paid upon creation)
-    if (!body.paymentStatus) {
-      body.paymentStatus = "UNPAID";
-    }
+    body.invoiceNo = body.invoiceNo.trim();
+    body.date = toISODate(body.date);
+    await assertUniqueInvoiceNo(body.invoiceNo);
 
-    // Automatically store customer details in Customer database
+    // Payment status is derived from receipts; an amount received at billing time is recorded as a receipt below.
+    const requestedStatus = body.paymentStatus;
+    const amountReceivedNow = Number(body.paidAmount) || 0;
+    delete body.paymentStatus;
+    delete body.paidAmount;
+    delete body.paymentDate;
+
     if (body.billedTo?.name) {
-      const custName = body.billedTo.name.trim();
-      const custData = {
-        name: custName,
-        mobile: body.billedTo.mobile || "",
-        gstin: body.billedTo.gstin || "",
-        address: body.billedTo.address || "",
-        deliveryPlace: body.deliveryPlace || body.station || "",
-      };
-      
-      const existingCustomer = await Customer.findOne({
-        name: { $regex: `^${custName}$`, $options: "i" },
+      await upsertCustomer({
+        name: body.billedTo.name,
+        mobile: body.billedTo.mobile,
+        gstin: body.billedTo.gstin,
+        address: body.billedTo.address,
+        deliveryPlace: body.deliveryPlace || body.station,
       });
-
-      if (existingCustomer) {
-        await Customer.findByIdAndUpdate(existingCustomer._id, custData);
-      } else {
-        await Customer.create(custData);
-      }
     }
 
-    const newBill = await Bill.create(body);
-    return NextResponse.json(newBill, { status: 201 });
+    const newBill = await Bill.create({ ...body, paymentStatus: "UNPAID", paidAmount: 0 });
+
+    const receiptAmount =
+      requestedStatus === "PAID" ? newBill.grandTotal : requestedStatus === "PARTIAL" ? amountReceivedNow : 0;
+    if (receiptAmount > 0) {
+      await recordPayment({
+        billId: newBill._id,
+        customerName: newBill.billedTo?.name || "Customer",
+        amount: round2(Math.min(receiptAmount, newBill.grandTotal)),
+        date: newBill.date,
+        paymentMode: body.paymentMode || "Cash",
+        notes: "Received at billing",
+      });
+    }
+
+    return NextResponse.json(await recalcBill(newBill._id), { status: 201 });
   } catch (error: any) {
-    return NextResponse.json(
-      { message: error?.message || "Failed to create bill" },
-      { status: 500 }
-    );
+    const { body, status } = errorResponse(error, "Failed to create bill");
+    return NextResponse.json(body, { status });
   }
+}
+
+/** Suggest the next invoice number by incrementing the number in the most recent bill's invoice no. */
+async function suggestNextInvoiceNo() {
+  const last = await Bill.findOne().sort({ createdAt: -1 }).select("invoiceNo").lean();
+  let candidate = last?.invoiceNo ? increment(last.invoiceNo) : `1/${new Date().getFullYear()}`;
+  for (let i = 0; i < 50 && (await Bill.exists({ invoiceNo: exactName(candidate) })); i++) {
+    candidate = increment(candidate);
+  }
+  return candidate;
+}
+
+function increment(invoiceNo: string) {
+  const m = invoiceNo.match(/\d+/);
+  if (!m || m.index === undefined) return `${invoiceNo}-1`;
+  const next = String(parseInt(m[0], 10) + 1).padStart(m[0].length, "0");
+  return invoiceNo.slice(0, m.index) + next + invoiceNo.slice(m.index + m[0].length);
 }

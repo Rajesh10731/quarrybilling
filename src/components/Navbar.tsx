@@ -98,13 +98,13 @@ export default function Navbar({ user }: { user?: any } = {}) {
     <>
       {/* Top Header */}
       <nav className="glass-header sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Brand Logo & Sidebar Toggle */}
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-900 rounded-xl border border-slate-800/80 transition-all active:scale-95 shrink-0"
+                className="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-900 active:bg-slate-800 rounded-xl border border-slate-800/80 transition-all duration-200 ease-out active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30 shrink-0"
                 title="Open Sidebar"
                 aria-label="Open Sidebar"
               >
@@ -191,17 +191,20 @@ export default function Navbar({ user }: { user?: any } = {}) {
       </nav>
 
       {/* Slide-Over Beautiful Sidebar Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
+      {/* Always mounted so it can slide in and out smoothly; hidden (and not focusable) when closed */}
+      <div
+        className={`fixed inset-0 z-50 flex transition-[visibility] duration-300 ${mobileMenuOpen ? "visible" : "invisible pointer-events-none"}`}
+        aria-hidden={!mobileMenuOpen}
+      >
           {/* Backdrop Blur Overlay */}
           <div
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+            className={`fixed inset-0 bg-slate-400/35 backdrop-blur-[2px] transition-opacity duration-300 ease-out motion-reduce:transition-none ${mobileMenuOpen ? "opacity-100" : "opacity-0"}`}
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
           {/* Sidebar Drawer Panel */}
-          <aside className="relative w-[88vw] max-w-[340px] sm:max-w-[380px] bg-slate-950/98 border-r border-slate-800/90 shadow-[25px_0_60px_rgba(0,0,0,0.9)] flex flex-col justify-between z-50 h-full overflow-hidden animate-in slide-in-from-left duration-300">
+          <aside className={`relative w-[88vw] max-w-[340px] sm:max-w-[380px] bg-slate-950/98 border-r border-slate-800/90 shadow-[12px_0_40px_rgba(60,70,110,0.15)] flex flex-col justify-between z-50 h-full overflow-hidden transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
             {/* Header & Brand */}
             <div className="p-4 sm:p-5 border-b border-slate-800/80 bg-gradient-to-b from-slate-900/90 to-slate-950 shrink-0">
               <div className="flex items-center justify-between">
@@ -223,7 +226,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
                       </span>
                     </div>
                     <div className="flex items-center space-x-1.5 mt-0.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(140,199,166,0.6)] animate-pulse" />
                       <span className="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">
                         Live System
                       </span>
@@ -369,11 +372,10 @@ export default function Navbar({ user }: { user?: any } = {}) {
               </div>
             </div>
           </aside>
-        </div>
-      )}
+      </div>
 
       {/* Floating Bottom Navigation Bar for Mobile (Thumb Friendly) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-2xl border-t border-slate-800/80 shadow-[0_-10px_30px_rgba(0,0,0,0.7)] px-2 py-1 bottom-nav-safe flex items-center justify-around">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-2xl border-t border-slate-800/80 shadow-[0_-4px_16px_rgba(60,70,110,0.08)] px-2 py-1 bottom-nav-safe flex items-center justify-around">
         <Link
           href="/dashboard"
           className={`flex flex-col items-center py-1.5 px-3 rounded-xl transition-all relative ${
@@ -383,7 +385,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
           <Home className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Home</span>
           {pathname === "/dashboard" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)] absolute bottom-0.5" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(102,118,204,0.5)] absolute bottom-0.5" />
           )}
         </Link>
 
@@ -398,7 +400,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
           <FileText className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Sales</span>
           {pathname.startsWith("/bills") && pathname !== "/bills/new" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)] absolute bottom-0.5" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(102,118,204,0.5)] absolute bottom-0.5" />
           )}
         </Link>
 
@@ -408,7 +410,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
           className="flex flex-col items-center -mt-6 group"
           aria-label="Create New Record"
         >
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 text-slate-950 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.45)] ring-4 ring-slate-950 group-active:scale-95 transition-all font-black border border-amber-300/40">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 text-slate-950 flex items-center justify-center shadow-[0_6px_16px_rgba(102,118,204,0.35)] ring-4 ring-slate-950 group-active:scale-95 transition-all font-black border border-amber-300/40">
             <Plus className="w-6 h-6 stroke-[3]" />
           </div>
           <span className="text-[10px] text-amber-400 font-black mt-0.5 drop-shadow">+ Add</span>
@@ -425,7 +427,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
           <Truck className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Inward</span>
           {pathname.startsWith("/purchases") && pathname !== "/purchases/new" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)] absolute bottom-0.5" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(102,118,204,0.5)] absolute bottom-0.5" />
           )}
         </Link>
 
@@ -440,7 +442,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
 
       {/* Quick Create Popover Modal for Mobile */}
       {showQuickCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-400/35 backdrop-blur-[2px] p-0 sm:p-4 soft-fade-in">
           <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 safe-bottom">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>

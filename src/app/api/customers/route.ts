@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Customer } from "@/models/Customer";
 import { getSession } from "@/lib/auth";
+import { containsText, upsertCustomer } from "@/lib/ledger";
 
 export async function GET(req: Request) {
   try {
@@ -19,10 +20,10 @@ export async function GET(req: Request) {
     if (query) {
       filter = {
         $or: [
-          { name: { $regex: query, $options: "i" } },
-          { mobile: { $regex: query, $options: "i" } },
-          { gstin: { $regex: query, $options: "i" } },
-          { deliveryPlace: { $regex: query, $options: "i" } },
+          { name: containsText(query) },
+          { mobile: containsText(query) },
+          { gstin: containsText(query) },
+          { deliveryPlace: containsText(query) },
         ],
       };
     }
@@ -55,18 +56,16 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // Upsert customer by name
-    let customer = await Customer.findOne({
-      name: { $regex: `^${body.name.trim()}$`, $options: "i" },
+    // Upsert by exact name; blank fields never erase details already saved
+    const customer = await upsertCustomer({
+      name: body.name,
+      mobile: body.mobile,
+      gstin: body.gstin,
+      address: body.address,
+      deliveryPlace: body.deliveryPlace,
+      // The add form always sends 0 by default; only a real value may change a saved opening balance
+      openingBalance: Number(body.openingBalance) ? Number(body.openingBalance) : undefined,
     });
-
-    if (customer) {
-      customer = await Customer.findByIdAndUpdate(customer._id, body, {
-        new: true,
-      });
-    } else {
-      customer = await Customer.create(body);
-    }
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error: any) {

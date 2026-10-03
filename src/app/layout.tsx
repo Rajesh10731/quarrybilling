@@ -10,7 +10,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#020617",
+  themeColor: "#f6f7fb",
 };
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default async function RootLayout({
   const session = await getSession();
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body className={`${inter.className} bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased`}>
         <Navbar user={session} />
         <main className="flex-1">{children}</main>

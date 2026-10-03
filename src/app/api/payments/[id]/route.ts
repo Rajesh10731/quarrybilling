@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Payment } from "@/models/Payment";
-import { Bill } from "@/models/Bill";
 import { getSession } from "@/lib/auth";
+import { recalcBill } from "@/lib/ledger";
 
 export async function GET(
   req: Request,
@@ -49,27 +49,9 @@ export async function DELETE(
       return NextResponse.json({ message: "Payment not found" }, { status: 404 });
     }
 
-    // If payment was linked to a bill, recalculate the bill's paidAmount & paymentStatus
+    // Re-derive the linked bill's paid amount and status from the remaining receipts
     if (payment.billId) {
-      const bill = await Bill.findById(payment.billId);
-      if (bill) {
-        const remainingPayments = await Payment.find({ billId: payment.billId });
-        const totalPaid = remainingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-        let newStatus: "UNPAID" | "PARTIAL" | "PAID" = "UNPAID";
-        if (totalPaid >= bill.grandTotal) {
-          newStatus = "PAID";
-        } else if (totalPaid > 0) {
-          newStatus = "PARTIAL";
-        }
-
-        await Bill.findByIdAndUpdate(payment.billId, {
-          $set: {
-            paidAmount: totalPaid,
-            paymentStatus: newStatus,
-          },
-        });
-      }
+      await recalcBill(payment.billId);
     }
 
     return NextResponse.json({ message: "Payment deleted successfully" });

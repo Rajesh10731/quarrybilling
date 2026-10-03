@@ -4,7 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Printer, ArrowLeft, Calendar, FileText } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
+
+// Current Indian financial year (1 Apr – 31 Mar)
+const fyStartYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
 
 export default function CustomerStatementPage() {
   const params = useParams();
@@ -14,8 +17,8 @@ export default function CustomerStatementPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const [fromDate, setFromDate] = useState("2026-04-01");
-  const [toDate, setToDate] = useState("2027-03-31");
+  const [fromDate, setFromDate] = useState(`${fyStartYear}-04-01`);
+  const [toDate, setToDate] = useState(`${fyStartYear + 1}-03-31`);
 
   const fetchStatement = () => {
     if (!id) return;
@@ -41,22 +44,6 @@ export default function CustomerStatementPage() {
     fetchStatement();
   }, [id]);
 
-  const handleToggleBillPayment = async (billId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "PAID" ? "UNPAID" : "PAID";
-    try {
-      const res = await fetch(`/api/bills/${billId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: newStatus }),
-      });
-      if (res.ok) {
-        fetchStatement();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -81,7 +68,7 @@ export default function CustomerStatementPage() {
   return (
     <div className="bg-slate-950 min-h-screen text-slate-100 p-4 sm:p-6 print:p-0 print:bg-white print:text-black">
       {/* Controls Bar (Hidden in Print) */}
-      <div className="max-w-6xl mx-auto mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 glass-card border border-slate-800 p-5 rounded-3xl print:hidden shadow-2xl">
+      <div className="max-w-[1600px] mx-auto mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 glass-card border border-slate-800 p-5 rounded-3xl print:hidden shadow-2xl">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => router.push("/customers")}
@@ -136,7 +123,7 @@ export default function CustomerStatementPage() {
       </div>
 
       {/* Printable Statement Sheet matching exact screenshot image format */}
-      <div className="bg-white text-black p-2.5 sm:p-8 max-w-6xl mx-auto shadow-2xl print:shadow-none print:p-0 print:m-0 font-sans text-xs overflow-x-auto touch-scroll">
+      <div className="paper bg-white text-black p-2.5 sm:p-8 max-w-[1600px] mx-auto shadow-2xl print:shadow-none print:p-0 print:m-0 font-sans text-xs overflow-x-auto touch-scroll">
         <div className="text-center text-slate-500 text-[10px] pb-1 sm:hidden print:hidden">
           • Swipe horizontally to view full ledger table •
         </div>
@@ -155,7 +142,7 @@ export default function CustomerStatementPage() {
           <div className="text-xs pt-1">
             <span>Period : </span>
             <span className="font-mono font-semibold">
-              {data.period?.fromDate || "01-04-2026"} TO {data.period?.toDate || "31-03-2027"}
+              {formatDate(data.period?.fromDate)} TO {formatDate(data.period?.toDate)}
             </span>
           </div>
         </div>
@@ -182,6 +169,16 @@ export default function CustomerStatementPage() {
               </tr>
             </thead>
             <tbody>
+              {summary.openingBalance ? (
+                <tr className="border-b border-dashed border-slate-400 font-bold bg-slate-50">
+                  <td className="border-r border-black p-1.5 text-center">{formatDate(data.period?.fromDate)}</td>
+                  <td colSpan={9} className="border-r border-black p-1.5 uppercase">Opening Balance</td>
+                  <td className="border-r border-black p-1.5 text-right">{summary.openingBalance < 0 ? formatCurrency(-summary.openingBalance) : "--"}</td>
+                  <td className="border-r border-black p-1.5 text-right">{summary.openingBalance > 0 ? formatCurrency(summary.openingBalance) : "--"}</td>
+                  <td className="border-r border-black p-1.5"></td>
+                  <td className="p-1.5 print:hidden"></td>
+                </tr>
+              ) : null}
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={14} className="text-center py-8 text-slate-500 italic">
@@ -190,10 +187,24 @@ export default function CustomerStatementPage() {
                 </tr>
               ) : (
                 rows.map((row: any, idx: number) => {
+                  if (row.type === "payment") {
+                    return (
+                      <tr key={idx} className="border-b border-dashed border-slate-400 bg-emerald-50/60">
+                        <td className="border-r border-black p-1.5 text-center font-medium">{formatDate(row.date)}</td>
+                        <td className="border-r border-black p-1.5 text-center font-bold text-[10px]">{row.billNo}</td>
+                        <td className="border-r border-black p-1.5 text-center">--</td>
+                        <td colSpan={7} className="border-r border-black p-1.5 font-bold uppercase text-emerald-800 print:text-black">{row.material}</td>
+                        <td className="border-r border-black p-1.5 text-right font-semibold text-emerald-700">{formatCurrency(row.credit)}</td>
+                        <td className="border-r border-black p-1.5 text-right">--</td>
+                        <td className="border-r border-black p-1.5"></td>
+                        <td className="p-1.5 print:hidden text-center text-[10px] font-bold text-emerald-700">RECEIPT</td>
+                      </tr>
+                    );
+                  }
                   const status = row.paymentStatus || "UNPAID";
                   return (
                     <tr key={idx} className="border-b border-dashed border-slate-400 hover:bg-amber-50/50">
-                      <td className="border-r border-black p-1.5 text-center font-medium">{row.date}</td>
+                      <td className="border-r border-black p-1.5 text-center font-medium">{formatDate(row.date)}</td>
                       <td className="border-r border-black p-1.5 text-center font-bold">
                         <Link href={`/bills/${row.billId}`} className="hover:underline text-blue-800 print:text-black">
                           {row.billNo}
@@ -207,23 +218,23 @@ export default function CustomerStatementPage() {
                       <td className="border-r border-black p-1.5 text-right">{row.loading ? formatCurrency(row.loading) : "--"}</td>
                       <td className="border-r border-black p-1.5 text-right">{row.lorryFri ? formatCurrency(row.lorryFri) : "--"}</td>
                       <td className="border-r border-black p-1.5 text-right font-bold">{row.total ? formatCurrency(row.total) : "0.00"}</td>
-                      <td className="border-r border-black p-1.5 text-right font-semibold text-emerald-700">{row.credit ? formatCurrency(row.credit) : "--"}</td>
+                      <td className="border-r border-black p-1.5 text-right">--</td>
                       <td className="border-r border-black p-1.5 text-right font-bold">{row.debit ? formatCurrency(row.debit) : "--"}</td>
                       <td className="border-r border-black p-1.5 font-semibold uppercase">{row.deliveryPlace || "--"}</td>
                       <td className="p-1.5 print:hidden text-center">
-                        <button
-                          onClick={() => handleToggleBillPayment(row.billId, status)}
-                          title="Click to toggle Paid / Unpaid"
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border transition-all ${
+                        <Link
+                          href={`/bills/${row.billId}`}
+                          title="Open bill to record or delete payments"
+                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
                             status === "PAID"
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200"
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-400"
                               : status === "PARTIAL"
-                              ? "bg-amber-100 text-amber-800 border-amber-400 hover:bg-amber-200"
-                              : "bg-red-100 text-red-800 border-red-400 hover:bg-red-200"
+                              ? "bg-amber-100 text-amber-800 border-amber-400"
+                              : "bg-red-100 text-red-800 border-red-400"
                           }`}
                         >
                           {status}
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -238,6 +249,7 @@ export default function CustomerStatementPage() {
           <div className="flex justify-between items-center border-b border-slate-300 pb-2">
             <span className="uppercase tracking-wider">Grand Total</span>
             <div className="space-x-8 font-extrabold text-sm">
+              <span>OPENING: ₹{formatCurrency(summary.openingBalance || 0)}</span>
               <span>DEBIT: ₹{formatCurrency(summary.totalDebit || 0)}</span>
               <span>CREDIT: ₹{formatCurrency(summary.totalCredit || 0)}</span>
             </div>

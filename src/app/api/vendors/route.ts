@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/db";
 import { Vendor } from "@/models/Vendor";
 import { Purchase } from "@/models/Purchase";
 import { getSession } from "@/lib/auth";
+import { containsText, upsertVendor } from "@/lib/ledger";
+import { vendorPurchaseFilter, vendorSummary } from "@/lib/purchases";
 
 export async function GET(req: Request) {
   try {
@@ -20,10 +22,10 @@ export async function GET(req: Request) {
     if (query) {
       filter = {
         $or: [
-          { name: { $regex: query, $options: "i" } },
-          { mobile: { $regex: query, $options: "i" } },
-          { gstin: { $regex: query, $options: "i" } },
-          { quarryLocation: { $regex: query, $options: "i" } },
+          { name: containsText(query) },
+          { mobile: containsText(query) },
+          { gstin: containsText(query) },
+          { quarryLocation: containsText(query) },
         ],
       };
     }
@@ -33,28 +35,15 @@ export async function GET(req: Request) {
     // Attach purchase aggregates per vendor
     const vendorsWithStats = await Promise.all(
       vendors.map(async (v) => {
-        const purchases = await Purchase.find({
-          $or: [
-            { vendorId: v._id },
-            { vendorName: { $regex: `^${v.name.trim()}$`, $options: "i" } },
-          ],
-        }).select("grandTotal paidAmount paymentStatus qty").lean();
-
-        const totalPurchases = purchases.length;
-        const totalAmount = purchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
-        const totalPaid = purchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-        const totalPending = purchases
-          .filter((p) => p.paymentStatus === "UNPAID" || p.paymentStatus === "PARTIAL")
-          .reduce((sum, p) => sum + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0);
-        const totalTonnage = purchases.reduce((sum, p) => sum + (p.qty || 0), 0);
-
+        const purchases = await Purchase.find(vendorPurchaseFilter(v)).select("grandTotal paidAmount qty").lean();
+        const summary = vendorSummary(v.openingBalance, purchases);
         return {
           ...v,
-          totalPurchases,
-          totalAmount,
-          totalPaid,
-          totalPending,
-          totalTonnage,
+          totalPurchases: summary.totalPurchases,
+          totalAmount: summary.totalAmount,
+          totalPaid: summary.totalPaid,
+          totalPending: summary.pendingBalance,
+          totalTonnage: summary.totalTonnage,
         };
       })
     );
@@ -82,16 +71,9 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    const nameTrim = body.name.trim();
-    let vendor = await Vendor.findOne({
-      name: { $regex: `^${nameTrim}$`, $options: "i" },
-    });
-
-    if (vendor) {
-      vendor = await Vendor.findByIdAndUpdate(vendor._id, body, { new: true });
-    } else {
-      vendor = await Vendor.create(body);
-    }
+    // Upsert by exact name; blank fields never erase details already saved.
+    // The add form always sends opening balance 0, so only a real value may change it.
+    const vendor = await upsertVendor({ ...body, openingBalance: Number(body.openingBalance) ? Number(body.openingBalance) : undefined });
 
     return NextResponse.json(vendor, { status: 201 });
   } catch (error: any) {

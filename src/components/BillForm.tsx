@@ -99,6 +99,17 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
       .catch((err) => console.error(err));
   }, []);
 
+  // Suggest the next free invoice number for a new bill
+  useEffect(() => {
+    if (isEditing || initialBill?.invoiceNo) return;
+    fetch("/api/bills?nextInvoiceNo=1")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.invoiceNo) setFormData((prev) => ({ ...prev, invoiceNo: data.invoiceNo }));
+      })
+      .catch((err) => console.error(err));
+  }, [isEditing, initialBill?.invoiceNo]);
+
   // Fetch Saved Settings if creating a new bill
   useEffect(() => {
     if (!isEditing && !initialBill) {
@@ -232,25 +243,18 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
 
   const handleSubmit = async (e: React.FormEvent, shouldPrintAfter = false) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    if (!isEditing && formData.paymentStatus === "PARTIAL") {
+      const part = Number(formData.paidAmount) || 0;
+      if (part <= 0 || part >= formData.grandTotal) {
+        setError("For a part payment, enter an amount greater than 0 and less than the grand total.");
+        return;
+      }
+    }
+    setLoading(true);
 
     try {
-      // 1. Auto-save customer to Customer Database
-      if (formData.billedTo?.name) {
-        await fetch("/api/customers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: formData.billedTo.name,
-            mobile: formData.billedTo.mobile,
-            gstin: formData.billedTo.gstin,
-            address: formData.billedTo.address,
-            deliveryPlace: formData.deliveryPlace || "",
-          }),
-        });
-      }
-
+      // Customer details are saved by the server along with the bill
       // 2. Save Bill
       const url = isEditing && initialBill?._id ? `/api/bills/${initialBill._id}` : "/api/bills";
       const method = isEditing && initialBill?._id ? "PUT" : "POST";
@@ -279,7 +283,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-3 sm:p-6 text-slate-100 pb-mobile-form">
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 text-slate-100 pb-mobile-form">
       {/* Top Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -464,24 +468,47 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Payment Status</label>
-              <select
-                value={formData.paymentStatus || "UNPAID"}
-                onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
-                className={`w-full border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none ${
-                  formData.paymentStatus === "PAID"
-                    ? "bg-emerald-950 text-emerald-300 border-emerald-700"
-                    : formData.paymentStatus === "PARTIAL"
-                    ? "bg-amber-950 text-amber-300 border-amber-700"
-                    : "bg-red-950 text-red-300 border-red-800"
-                }`}
-              >
-                <option value="UNPAID">🔴 UNPAID (Default)</option>
-                <option value="PAID">🟢 PAID</option>
-                <option value="PARTIAL">🟡 PARTIAL</option>
-              </select>
-            </div>
+            {isEditing ? (
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Payment Status</label>
+                <div className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-bold text-slate-300">
+                  {formData.paymentStatus || "UNPAID"} · ₹{formatCurrency(Number(formData.paidAmount) || 0)} received
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">Record or delete payments from the bill page.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Payment Received Now</label>
+                <select
+                  value={formData.paymentStatus || "UNPAID"}
+                  onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none ${
+                    formData.paymentStatus === "PAID"
+                      ? "bg-emerald-950 text-emerald-300 border-emerald-700"
+                      : formData.paymentStatus === "PARTIAL"
+                      ? "bg-amber-950 text-amber-300 border-amber-700"
+                      : "bg-red-950 text-red-300 border-red-800"
+                  }`}
+                >
+                  <option value="UNPAID">🔴 Nothing yet (UNPAID)</option>
+                  <option value="PAID">🟢 Full amount (PAID)</option>
+                  <option value="PARTIAL">🟡 Part amount (PARTIAL)</option>
+                </select>
+                {formData.paymentStatus === "PARTIAL" && (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={formData.paidAmount || ""}
+                    onChange={(e) => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })}
+                    placeholder="Amount received now (₹)"
+                    className="mt-2 w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                  />
+                )}
+                <p className="text-[11px] text-slate-500 mt-1">Saved as a payment receipt for this bill.</p>
+              </div>
+            )}
           </div>
         </div>
 

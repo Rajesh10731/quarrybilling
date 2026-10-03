@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/db";
 import { Vendor } from "@/models/Vendor";
 import { Purchase } from "@/models/Purchase";
 import { getSession } from "@/lib/auth";
+import { exactName } from "@/lib/ledger";
+import { vendorPurchaseFilter, vendorSummary } from "@/lib/purchases";
 
 export async function GET(
   req: Request,
@@ -22,29 +24,13 @@ export async function GET(
       return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
     }
 
-    const purchases = await Purchase.find({
-      $or: [
-        { vendorId: vendor._id },
-        { vendorName: { $regex: `^${vendor.name.trim()}$`, $options: "i" } },
-      ],
-    }).sort({ date: -1, createdAt: -1 });
-
-    const totalPurchases = purchases.length;
-    const totalAmount = purchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
-    const totalPaid = purchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-    const pendingBalance = purchases
-      .filter((p) => p.paymentStatus === "UNPAID" || p.paymentStatus === "PARTIAL")
-      .reduce((sum, p) => sum + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0);
+    const purchases = await Purchase.find(vendorPurchaseFilter(vendor)).sort({ date: -1, createdAt: -1 });
+    const summary = vendorSummary(vendor.openingBalance, purchases);
 
     return NextResponse.json({
       vendor,
       purchases,
-      summary: {
-        totalPurchases,
-        totalAmount,
-        totalPaid,
-        pendingBalance,
-      },
+      summary,
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -69,7 +55,24 @@ export async function PUT(
 
     await connectToDatabase();
 
-    const updated = await Vendor.findByIdAndUpdate(id, body, { new: true });
+    if (body.name !== undefined) {
+      body.name = String(body.name).trim();
+      if (!body.name) return NextResponse.json({ message: "Vendor Name is required" }, { status: 400 });
+      const dup = await Vendor.findOne({ _id: { $ne: id }, name: exactName(body.name) }).select("_id").lean();
+      if (dup) return NextResponse.json({ message: `Another vendor is already named "${body.name}"` }, { status: 409 });
+    }
+
+    const existing = await Vendor.findById(id);
+    if (!existing) {
+      return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
+    }
+    // Keep old entries linked when the vendor is renamed
+    if (body.name && body.name !== existing.name) {
+      await Purchase.updateMany({ vendorName: exactName(existing.name), $or: [{ vendorId: { $exists: false } }, { vendorId: null }] }, { $set: { vendorId: existing._id } });
+      await Purchase.updateMany({ vendorId: existing._id }, { $set: { vendorName: body.name } });
+    }
+
+    const updated = await Vendor.findByIdAndUpdate(id, body, { returnDocument: "after", runValidators: true });
     if (!updated) {
       return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
     }
@@ -95,6 +98,18 @@ export async function DELETE(
 
     const { id } = await params;
     await connectToDatabase();
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
+    }
+    const purchaseCount = await Purchase.countDocuments(vendorPurchaseFilter(vendor));
+    if (purchaseCount) {
+      return NextResponse.json(
+        { message: `Cannot delete ${vendor.name}: they have ${purchaseCount} purchase entr${purchaseCount === 1 ? "y" : "ies"}. Delete those first.` },
+        { status: 409 }
+      );
+    }
 
     const deleted = await Vendor.findByIdAndDelete(id);
     if (!deleted) {

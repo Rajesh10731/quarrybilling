@@ -5,6 +5,7 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/quarry
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
+  migration?: Promise<void> | null;
 }
 
 declare global {
@@ -19,7 +20,8 @@ if (!cached) {
 }
 
 export async function connectToDatabase() {
-  if (cached?.conn) {
+  if (cached?.conn && cached.migration) {
+    await cached.migration;
     return cached.conn;
   }
 
@@ -39,6 +41,18 @@ export async function connectToDatabase() {
     cached!.promise = null;
     throw e;
   }
+
+  // Bring data written by older versions in line with the current rules (runs once per server start).
+  if (!cached!.migration) {
+    // Assigned before any await so concurrent requests share the same run
+    cached!.migration = import("@/lib/migrate")
+      .then(({ migrateLegacyData }) => migrateLegacyData())
+      .catch((e) => {
+        cached!.migration = null;
+        console.error("Data migration failed", e);
+      });
+  }
+  await cached!.migration;
 
   return cached!.conn;
 }

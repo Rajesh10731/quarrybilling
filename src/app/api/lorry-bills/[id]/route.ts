@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { LorryBill } from "@/models/LorryBill";
 import { getSession } from "@/lib/auth";
+import { toISODate } from "@/lib/ledger";
 
 export async function GET(
   req: Request,
@@ -38,6 +39,8 @@ export async function PUT(
     }
     const { id } = await params;
     const body = await req.json();
+    if (body.date) body.date = toISODate(body.date);
+    if (body.paymentDate) body.paymentDate = toISODate(body.paymentDate);
     await connectToDatabase();
 
     // Recalculate on update
