@@ -90,41 +90,6 @@ export default async function DashboardPage() {
               {currentDateStr} • Quarry sales billing, inward transport loads, and customer ledgers.
             </p>
           </div>
-
-          {/* Action Buttons (Thumb-friendly & high-contrast) */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full lg:w-auto">
-            <Link
-              href="/bills/new"
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-500/25 transition-all text-xs sm:text-sm tap-active"
-            >
-              <PlusCircle className="w-4 h-4 shrink-0" />
-              <span>+ Sales Bill</span>
-            </Link>
-
-            <Link
-              href="/purchases/new"
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-900/90 hover:bg-slate-800 text-amber-400 font-black rounded-2xl border border-amber-500/40 shadow-lg shadow-amber-500/10 transition-all text-xs sm:text-sm tap-active"
-            >
-              <Truck className="w-4 h-4 shrink-0" />
-              <span>+ Inward Load</span>
-            </Link>
-
-            <Link
-              href="/customers"
-              className="flex items-center justify-center space-x-1.5 px-3.5 py-3 bg-slate-900/80 hover:bg-slate-800 text-slate-200 font-bold rounded-2xl border border-slate-700/80 transition-all text-xs"
-            >
-              <Users className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Customers</span>
-            </Link>
-
-            <Link
-              href="/reports/payments"
-              className="flex items-center justify-center space-x-1.5 px-3.5 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-2xl border border-amber-500/30 transition-all text-xs"
-            >
-              <DollarSign className="w-4 h-4 shrink-0" />
-              <span>Payments</span>
-            </Link>
-          </div>
         </div>
       </div>
 

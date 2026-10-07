@@ -203,6 +203,24 @@ export async function assertUniqueInvoiceNo(invoiceNo: string, excludeId?: strin
   if (dup) throw new LedgerError(`Invoice number "${invoiceNo.trim()}" is already used by another bill`, 409);
 }
 
+/** Increase the first number in a document number, keeping its zero padding: "S-009" -> "S-010", "1/2026" -> "2/2026". */
+export function incrementDocNumber(docNo: string) {
+  const m = docNo.match(/\d+/);
+  if (!m || m.index === undefined) return `${docNo}-1`;
+  const next = String(parseInt(m[0], 10) + 1).padStart(m[0].length, "0");
+  return docNo.slice(0, m.index) + next + docNo.slice(m.index + m[0].length);
+}
+
+/** Suggest the next free invoice number by incrementing the most recent bill's invoice no. */
+export async function suggestNextInvoiceNo() {
+  const last = await Bill.findOne().sort({ createdAt: -1 }).select("invoiceNo").lean();
+  let candidate = last?.invoiceNo ? incrementDocNumber(last.invoiceNo) : `1/${new Date().getFullYear()}`;
+  for (let i = 0; i < 50 && (await Bill.exists({ invoiceNo: exactName(candidate) })); i++) {
+    candidate = incrementDocNumber(candidate);
+  }
+  return candidate;
+}
+
 /** Turn a thrown error into a JSON response body + status for route handlers. */
 export function errorResponse(error: any, fallback: string) {
   if (error instanceof LedgerError) return { body: { message: error.message }, status: error.status };

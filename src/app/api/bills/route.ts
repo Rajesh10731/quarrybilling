@@ -6,10 +6,10 @@ import {
   assertUniqueInvoiceNo,
   containsText,
   errorResponse,
-  exactName,
   recalcBill,
   recordPayment,
   round2,
+  suggestNextInvoiceNo,
   toISODate,
   upsertCustomer,
 } from "@/lib/ledger";
@@ -109,21 +109,4 @@ export async function POST(req: Request) {
     const { body, status } = errorResponse(error, "Failed to create bill");
     return NextResponse.json(body, { status });
   }
-}
-
-/** Suggest the next invoice number by incrementing the number in the most recent bill's invoice no. */
-async function suggestNextInvoiceNo() {
-  const last = await Bill.findOne().sort({ createdAt: -1 }).select("invoiceNo").lean();
-  let candidate = last?.invoiceNo ? increment(last.invoiceNo) : `1/${new Date().getFullYear()}`;
-  for (let i = 0; i < 50 && (await Bill.exists({ invoiceNo: exactName(candidate) })); i++) {
-    candidate = increment(candidate);
-  }
-  return candidate;
-}
-
-function increment(invoiceNo: string) {
-  const m = invoiceNo.match(/\d+/);
-  if (!m || m.index === undefined) return `${invoiceNo}-1`;
-  const next = String(parseInt(m[0], 10) + 1).padStart(m[0].length, "0");
-  return invoiceNo.slice(0, m.index) + next + invoiceNo.slice(m.index + m[0].length);
 }

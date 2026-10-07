@@ -18,6 +18,7 @@ import {
   Building2,
   Plus,
   ChevronRight,
+  ClipboardList,
   ShieldCheck,
 } from "lucide-react";
 
@@ -62,6 +63,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
   const navLinks = [
     { name: "Dashboard", subtitle: "Overview", href: "/dashboard", icon: Home },
     { name: "Sales Bills", subtitle: "Customer Invoices", href: "/bills", icon: FileText },
+    { name: "Quotations", subtitle: "Sales Quotes", href: "/quotations", icon: ClipboardList },
     { name: "Purchases", subtitle: "Inward Lorry", href: "/purchases", icon: Truck },
     { name: "Customers", subtitle: "Client Directory", href: "/customers", icon: Users },
     { name: "Vendors", subtitle: "Material Suppliers", href: "/vendors", icon: Building2 },
@@ -75,6 +77,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
       links: [
         { name: "Dashboard", subtitle: "Live Overview & Analytics", href: "/dashboard", icon: Home },
         { name: "Sales Bills", subtitle: "Customer Invoices & Outward", href: "/bills", icon: FileText },
+        { name: "Quotations", subtitle: "Sales Quotes & Rate Offers", href: "/quotations", icon: ClipboardList },
         { name: "Purchases", subtitle: "Inward Lorry Raw Materials", href: "/purchases", icon: Truck },
       ],
     },
@@ -111,7 +114,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
                 <Menu className="w-5 h-5" />
               </button>
 
-              <Link href="/dashboard" className="flex items-center space-x-2 sm:space-x-2.5 group min-w-0">
+              <Link href="/dashboard" className="flex items-center space-x-2 sm:space-x-2.5 group min-w-0 lg:shrink-0">
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-black tracking-wider text-base shadow-lg shadow-amber-500/25 group-hover:scale-105 transition-transform shrink-0">
                   <Mountain className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
                 </div>
@@ -136,37 +139,23 @@ export default function Navbar({ user }: { user?: any } = {}) {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    title={link.name}
+                    className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 ${
                       isActive
                         ? "bg-gradient-to-r from-amber-500/20 to-amber-500/10 text-amber-400 border border-amber-500/30 shadow-sm"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
                     <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-slate-400"}`} />
-                    <span>{link.name}</span>
+                    {/* Icons only on smaller laptop screens so the bar never wraps */}
+                    <span className="hidden xl:inline">{link.name}</span>
                   </Link>
                 );
               })}
             </div>
 
-            {/* Quick Actions (Desktop) */}
+            {/* Sign out (Desktop); new bills / inward loads are created from their list pages */}
             <div className="hidden md:flex items-center space-x-2.5">
-              <Link
-                href="/bills/new"
-                className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 transition-all text-xs active:scale-95"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>+ Sales Bill</span>
-              </Link>
-
-              <Link
-                href="/purchases/new"
-                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-black rounded-xl border border-amber-500/30 transition-all text-xs active:scale-95"
-              >
-                <Truck className="w-4 h-4" />
-                <span>+ Inward Load</span>
-              </Link>
-
               <button
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-xl border border-transparent hover:border-red-900/50 transition-all"
