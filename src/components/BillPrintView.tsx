@@ -15,6 +15,10 @@ export interface BillData {
   station: string;
   companyName: string;
   companyGstin: string;
+  companyAddress?: string;
+  companyMobile?: string;
+  loadingCharges?: number;
+  lorryFreight?: number;
   documentTitle: string;
   copyLabel: string;
   billedTo: {
@@ -66,6 +70,22 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
   const items = bill.items || [];
   const emptyRowsCount = Math.max(0, minRows - items.length);
 
+  // Material value plus the extra charges that make up the grand total
+  const chargeRows: [string, number][] = [["Material Amount", bill.taxableAmount || 0]];
+  if (bill.loadingCharges) chargeRows.push(["Loading Charges", bill.loadingCharges]);
+  if (bill.lorryFreight) chargeRows.push(["Lorry Freight", bill.lorryFreight]);
+  if (bill.totalTax) chargeRows.push([`GST ${bill.taxRate || ""}`.trim(), bill.totalTax]);
+
+  // Payment line. Before saving, "Full payment" has no receipt yet, so it counts as the whole total.
+  const status = bill.paymentStatus || "UNPAID";
+  const grand = bill.grandTotal || 0;
+  const paid = status === "PAID" ? Math.max(bill.paidAmount || 0, grand) : status === "PARTIAL" ? bill.paidAmount || 0 : 0;
+  const payment = {
+    label: status === "PAID" ? "Fully paid" : status === "PARTIAL" ? "Advance paid" : "Not paid",
+    paid,
+    due: Math.max(0, Math.round((grand - paid) * 100) / 100),
+  };
+
   return (
     <div className="paper bg-white text-black p-4 font-sans text-xs max-w-[210mm] mx-auto print:max-w-none print:p-0 print:m-0 min-w-[650px] print:min-w-0">
       {/* Outer Invoice Container Box */}
@@ -77,11 +97,18 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
             <span>GSTIN : </span>
             <span>{bill.companyGstin}</span>
           </div>
-          <div className="text-center font-bold">
-            {bill.companyName && (
-              <div className="text-sm uppercase tracking-wide">{bill.companyName}</div>
+          <div className="text-center font-bold px-2">
+            {bill.companyName ? (
+              <div className="text-lg font-extrabold uppercase tracking-wide">{bill.companyName}</div>
+            ) : (
+              // Shown on screen only, never printed
+              <div className="print:hidden text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
+                Company name is not set — add it in Settings → Company Profile
+              </div>
             )}
-            <div className="text-base uppercase underline tracking-wider">{bill.documentTitle || "BILL OF SUPPLY"}</div>
+            {bill.companyAddress && <div className="text-[11px] font-medium">{bill.companyAddress}</div>}
+            {bill.companyMobile && <div className="text-[11px] font-medium">Mobile: {bill.companyMobile}</div>}
+            <div className="text-base uppercase underline tracking-wider mt-0.5">{bill.documentTitle || "BILL OF SUPPLY"}</div>
           </div>
           <div className="text-right italic font-medium text-[11px]">
             {bill.copyLabel || "Original Copy"}
@@ -199,6 +226,18 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
           </table>
         </div>
 
+        {/* Charges added to the material value (only those used) */}
+        {chargeRows.length > 1 && (
+          <div className="border-b border-black text-[11px]">
+            {chargeRows.map(([label, value]) => (
+              <div key={label} className="flex justify-between border-b border-slate-200 last:border-b-0">
+                <div className="p-1 pl-2 flex-1 text-right font-semibold border-r border-black">{label}</div>
+                <div className="p-1 w-28 text-right font-semibold">{formatCurrency(value)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Grand Total Bar */}
         <div className="border-b border-black flex items-center justify-between font-bold text-[11px] bg-slate-50">
           <div className="p-1.5 text-right flex-1 border-r border-black">Grand Total</div>
@@ -228,6 +267,22 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
         {/* Amount in Words Line */}
         <div className="border-b border-black p-1.5 font-extrabold text-[11px] bg-slate-50">
           {bill.amountInWords?.startsWith("Rupees") ? bill.amountInWords : `Rupees ${bill.amountInWords}`}
+        </div>
+
+        {/* Payment status */}
+        <div className="border-b border-black p-1.5 text-[11px] flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+          <span>
+            <span className="font-bold">Payment : </span>
+            <span className="font-extrabold uppercase">{payment.label}</span>
+          </span>
+          {payment.paid > 0 && (
+            <span>
+              Received : <span className="font-bold">₹{formatCurrency(payment.paid)}</span>
+            </span>
+          )}
+          <span>
+            Balance Due : <span className="font-extrabold">₹{formatCurrency(payment.due)}</span>
+          </span>
         </div>
 
         {/* Bank Details & Terms / Signature Footer */}
@@ -268,7 +323,9 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
 
           {/* Right Block (Authorised Signatory) - 5 cols */}
           <div className="col-span-5 p-2 flex flex-col justify-between items-center text-center">
-            <div className="font-bold text-xs self-end">{bill.authorisedSignatoryText || "for RBMS"}</div>
+            <div className="font-bold text-xs self-end">
+              {bill.authorisedSignatoryText || (bill.companyName ? `for ${bill.companyName}` : "")}
+            </div>
             
             <div className="py-6 italic text-slate-400 text-[9px]">
               ( Authorised Stamp / Signature )

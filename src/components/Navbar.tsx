@@ -60,15 +60,12 @@ export default function Navbar({ user }: { user?: any } = {}) {
     }
   };
 
+  // Top bar: the four most-used sections. Customers, Vendors, Payment Reports and Settings are in the side menu.
   const navLinks = [
     { name: "Dashboard", subtitle: "Overview", href: "/dashboard", icon: Home },
     { name: "Sales Bills", subtitle: "Customer Invoices", href: "/bills", icon: FileText },
     { name: "Quotations", subtitle: "Sales Quotes", href: "/quotations", icon: ClipboardList },
     { name: "Purchases", subtitle: "Inward Lorry", href: "/purchases", icon: Truck },
-    { name: "Customers", subtitle: "Client Directory", href: "/customers", icon: Users },
-    { name: "Vendors", subtitle: "Material Suppliers", href: "/vendors", icon: Building2 },
-    { name: "Payment Reports", subtitle: "Ledgers & Due", href: "/reports/payments", icon: CreditCard },
-    { name: "Settings", subtitle: "Company Profile", href: "/settings", icon: Settings },
   ];
 
   const navCategories = [
@@ -130,7 +127,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
             </div>
 
             {/* Nav Items (Desktop) */}
-            <div className="hidden lg:flex items-center space-x-1 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80">
+            <div className="hidden lg:flex items-center space-x-[5px] bg-slate-950/60 p-[7px] rounded-2xl border border-slate-800/80">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive =
@@ -140,15 +137,14 @@ export default function Navbar({ user }: { user?: any } = {}) {
                     key={link.href}
                     href={link.href}
                     title={link.name}
-                    className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 ${
+                    className={`flex items-center space-x-[7px] px-3 py-[7px] rounded-[14px] text-[0.9rem] font-bold whitespace-nowrap transition-all duration-200 ${
                       isActive
                         ? "bg-gradient-to-r from-amber-500/20 to-amber-500/10 text-amber-400 border border-amber-500/30 shadow-sm"
                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-slate-400"}`} />
-                    {/* Icons only on smaller laptop screens so the bar never wraps */}
-                    <span className="hidden xl:inline">{link.name}</span>
+                    <Icon className={`w-[17px] h-[17px] ${isActive ? "text-amber-400" : "text-slate-400"}`} />
+                    <span>{link.name}</span>
                   </Link>
                 );
               })}
@@ -158,10 +154,11 @@ export default function Navbar({ user }: { user?: any } = {}) {
             <div className="hidden md:flex items-center space-x-2.5">
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-xl border border-transparent hover:border-red-900/50 transition-all"
+                className="flex items-center space-x-[7px] px-3 py-[7px] rounded-[14px] text-[0.9rem] font-bold whitespace-nowrap text-red-400 bg-red-950 hover:bg-red-900 border border-red-800 transition-all duration-200 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
                 title="Sign Out"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-[17px] h-[17px]" />
+                <span>Sign Out</span>
               </button>
             </div>
 

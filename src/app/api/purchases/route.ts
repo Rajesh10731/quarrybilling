@@ -3,7 +3,7 @@ import { connectToDatabase } from "@/lib/db";
 import { Purchase } from "@/models/Purchase";
 import { getSession } from "@/lib/auth";
 import { LedgerError, containsText, errorResponse, round2, toISODate } from "@/lib/ledger";
-import { DERIVED_PAYMENT_FIELDS, assertUniqueInwardNo, computePurchaseTotals, linkVendor, syncPurchasePayments } from "@/lib/purchases";
+import { DERIVED_PAYMENT_FIELDS, assertUniqueInwardNo, computePurchaseTotals, linkVendor, suggestNextInwardNo, syncPurchasePayments } from "@/lib/purchases";
 
 export async function GET(req: Request) {
   try {
@@ -20,6 +20,10 @@ export async function GET(req: Request) {
     const toDate = searchParams.get("toDate");
 
     await connectToDatabase();
+
+    if (searchParams.get("nextInwardNo")) {
+      return NextResponse.json({ inwardNo: await suggestNextInwardNo() });
+    }
 
     const filter: any = {};
 

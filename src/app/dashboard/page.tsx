@@ -160,46 +160,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Inward Purchases & Raw Material Summary Strip */}
-      <div className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950">
-        <div className="flex items-center space-x-3 sm:space-x-4">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-            <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-                Inward Purchases & Lorry Transport
-              </span>
-              <span className="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">
-                Transport
-              </span>
-            </div>
-            <p className="text-[11px] sm:text-xs text-slate-400">
-              {totalPurchasesCount} lorry loads received • {totalInwardTons.toFixed(2)} Tonne purchased
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800/80 pt-3 md:pt-0">
-          <div>
-            <span className="text-slate-400 block text-[10px] sm:text-[11px]">Total Purchases:</span>
-            <span className="font-black text-white text-sm sm:text-base">₹{formatCurrency(totalPurchaseSpend)}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] sm:text-[11px]">Vendor Payables:</span>
-            <span className="font-black text-red-400 text-sm sm:text-base">₹{formatCurrency(pendingPurchasePayables)}</span>
-          </div>
-          <Link
-            href="/purchases"
-            className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-xl border border-amber-500/30 transition-all text-xs tap-active"
-          >
-            <span>View All Inwards</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
-
       {/* Grid: Recent Outward Sales Bills & Recent Inward Loads */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. Recent Sales Invoices */}
@@ -324,6 +284,21 @@ export default async function DashboardPage() {
               <span>View All</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
+          </div>
+
+          {/* Inward totals (all loads), shown above the latest loads */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              ["Loads Received", String(totalPurchasesCount), "text-white"],
+              ["Tonnes Bought", totalInwardTons.toFixed(2), "text-white"],
+              ["Total Purchases", `₹${formatCurrency(totalPurchaseSpend)}`, "text-white"],
+              ["Vendor Payables", `₹${formatCurrency(pendingPurchasePayables)}`, "text-red-400"],
+            ].map(([label, value, color]) => (
+              <div key={label} className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
+                <span className={`block text-sm font-black ${color} truncate`}>{value}</span>
+              </div>
+            ))}
           </div>
 
           {recentPurchases.length === 0 ? (

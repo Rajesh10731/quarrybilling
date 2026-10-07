@@ -14,16 +14,19 @@ import {
   AlertCircle,
   DollarSign,
   Scale,
-  Building2,
   Clock,
   X,
   ArrowUpDown,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import DateRangeFilter, { DateRange, inDateRange } from "@/components/DateRangeFilter";
 
 export default function PurchasesListPage() {
   const router = useRouter();
-  const [purchases, setPurchases] = useState<any[]>([]);
+  const [allPurchases, setPurchases] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
+  // Everything below (cards, tabs, table) works on the loads inside the chosen dates
+  const purchases = useMemo(() => inDateRange(allPurchases, dateRange, (p) => p.date), [allPurchases, dateRange]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PAID" | "UNPAID" | "PARTIAL">("ALL");
@@ -112,14 +115,6 @@ export default function PurchasesListPage() {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Link
-            href="/vendors"
-            className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 px-3 py-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 font-bold rounded-xl border border-slate-700/80 text-xs transition-all"
-          >
-            <Building2 className="w-4 h-4 text-amber-400" />
-            <span>Vendors</span>
-          </Link>
-
-          <Link
             href="/purchases/new"
             className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 text-xs active:scale-95 transition-all"
           >
@@ -195,9 +190,9 @@ export default function PurchasesListPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+      <div className="flex flex-col lg:flex-row lg:flex-wrap justify-between items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
         {/* Search Input */}
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full lg:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <input
             type="text"
@@ -215,6 +210,8 @@ export default function PurchasesListPage() {
             </button>
           )}
         </div>
+
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
         {/* Status Filter Tabs */}
         <div className="flex items-center space-x-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 w-full sm:w-auto overflow-x-auto touch-scroll">

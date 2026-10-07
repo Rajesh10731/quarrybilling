@@ -38,6 +38,8 @@ export interface IBill extends Document {
   lorryFreight: number;
   companyName: string;
   companyGstin: string;
+  companyAddress?: string;
+  companyMobile?: string;
   documentTitle: string;
   copyLabel: string;
   billedTo: IBillParty;
@@ -103,6 +105,8 @@ const BillSchema = new Schema<IBill>(
     lorryFreight: { type: Number, default: 0 },
     companyName: { type: String, default: "" },
     companyGstin: { type: String, default: "" },
+    companyAddress: { type: String, default: "" },
+    companyMobile: { type: String, default: "" },
     documentTitle: { type: String, default: "BILL OF SUPPLY" },
     copyLabel: { type: String, default: "Original Copy" },
     billedTo: { type: BillPartySchema, required: true },

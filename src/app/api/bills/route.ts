@@ -3,7 +3,9 @@ import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
 import { getSession } from "@/lib/auth";
 import {
+  BILL_HEADER_FIELDS,
   assertUniqueInvoiceNo,
+  billHeaderFromSettings,
   containsText,
   errorResponse,
   recalcBill,
@@ -89,7 +91,9 @@ export async function POST(req: Request) {
       });
     }
 
-    const newBill = await Bill.create({ ...body, paymentStatus: "UNPAID", paidAmount: 0 });
+    // Company header, bank details and terms always come from Settings
+    for (const field of BILL_HEADER_FIELDS) delete body[field];
+    const newBill = await Bill.create({ ...body, ...(await billHeaderFromSettings()), paymentStatus: "UNPAID", paidAmount: 0 });
 
     const receiptAmount =
       requestedStatus === "PAID" ? newBill.grandTotal : requestedStatus === "PARTIAL" ? amountReceivedNow : 0;

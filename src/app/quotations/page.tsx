@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardList, Eye, Printer, PlusCircle, Search, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import QuotationStatusBadge from "@/components/QuotationStatusBadge";
+import DateRangeFilter, { DateRange, inDateRange } from "@/components/DateRangeFilter";
 import type { QuotationData } from "@/components/QuotationPrintView";
 
 const TABS = ["ALL", "OPEN", "ACCEPTED", "CONVERTED", "REJECTED", "EXPIRED"] as const;
@@ -13,7 +14,10 @@ const TAB_LABELS: Record<string, string> = { ALL: "All", OPEN: "Open", ACCEPTED:
 
 export default function QuotationsPage() {
   const router = useRouter();
-  const [quotations, setQuotations] = useState<QuotationData[]>([]);
+  const [allQuotations, setQuotations] = useState<QuotationData[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
+  // Cards, tabs and table work on the quotations dated inside the chosen range
+  const quotations = useMemo(() => inDateRange(allQuotations, dateRange, (q) => q.date), [allQuotations, dateRange]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<(typeof TABS)[number]>("ALL");
@@ -89,7 +93,7 @@ export default function QuotationsPage() {
         </div>
       </div>
 
-      <div className="glass-card rounded-2xl p-3 border border-slate-800 flex flex-col md:flex-row gap-3 justify-between">
+      <div className="glass-card rounded-2xl p-3 border border-slate-800 flex flex-col lg:flex-row lg:flex-wrap gap-3 justify-between items-center">
         <div className="relative md:w-96">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -99,6 +103,7 @@ export default function QuotationsPage() {
             className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
           />
         </div>
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
         <div className="flex gap-1 overflow-x-auto touch-scroll">
           {TABS.map((t) => (
             <button

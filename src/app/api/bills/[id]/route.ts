@@ -4,6 +4,7 @@ import { Bill } from "@/models/Bill";
 import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
 import {
+  BILL_HEADER_FIELDS,
   assertUniqueInvoiceNo,
   errorResponse,
   recalcBill,
@@ -60,6 +61,8 @@ export async function PUT(
     delete body.paidAmount;
     delete body.paymentDate;
     delete body._id;
+    // Keep the header the bill was issued with; it is never edited from the bill form
+    for (const field of BILL_HEADER_FIELDS) delete body[field];
 
     if (body.date) body.date = toISODate(body.date);
     if (body.invoiceNo !== undefined) {

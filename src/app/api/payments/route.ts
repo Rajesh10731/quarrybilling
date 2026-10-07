@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db";
 import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
@@ -41,6 +42,10 @@ export async function GET(req: Request) {
 
     // Bill filter
     if (billId) {
+      // A malformed bill id simply has no payments
+      if (!mongoose.isValidObjectId(billId)) {
+        return NextResponse.json({ payments: [], summary: { totalCollected: 0, transactionCount: 0 } });
+      }
       filter.billId = billId;
     }
 

@@ -3,6 +3,7 @@ import { Bill } from "@/models/Bill";
 import { Payment, IPayment } from "@/models/Payment";
 import { Customer } from "@/models/Customer";
 import { Vendor } from "@/models/Vendor";
+import { CompanySettings } from "@/models/CompanySettings";
 
 export type PaymentStatus = "UNPAID" | "PARTIAL" | "PAID";
 
@@ -203,12 +204,19 @@ export async function assertUniqueInvoiceNo(invoiceNo: string, excludeId?: strin
   if (dup) throw new LedgerError(`Invoice number "${invoiceNo.trim()}" is already used by another bill`, 409);
 }
 
-/** Increase the first number in a document number, keeping its zero padding: "S-009" -> "S-010", "1/2026" -> "2/2026". */
+/**
+ * Increase the running number in a document number, keeping its zero padding.
+ * The last number that is not a year is used: "PUR-2026-0001" -> "PUR-2026-0002",
+ * "1/2026" -> "2/2026", "S-009" -> "S-010", "INV/2026-27/015" -> "INV/2026-27/016".
+ */
 export function incrementDocNumber(docNo: string) {
-  const m = docNo.match(/\d+/);
-  if (!m || m.index === undefined) return `${docNo}-1`;
-  const next = String(parseInt(m[0], 10) + 1).padStart(m[0].length, "0");
-  return docNo.slice(0, m.index) + next + docNo.slice(m.index + m[0].length);
+  const groups = [...docNo.matchAll(/\d+/g)];
+  if (!groups.length) return `${docNo}-1`;
+  const isYear = (g: RegExpMatchArray) => g[0].length === 4 && +g[0] >= 1900 && +g[0] <= 2100;
+  const target = [...groups].reverse().find((g) => !isYear(g)) || groups[groups.length - 1];
+  const start = target.index ?? 0;
+  const next = String(parseInt(target[0], 10) + 1).padStart(target[0].length, "0");
+  return docNo.slice(0, start) + next + docNo.slice(start + target[0].length);
 }
 
 /** Suggest the next free invoice number by incrementing the most recent bill's invoice no. */
@@ -219,6 +227,40 @@ export async function suggestNextInvoiceNo() {
     candidate = incrementDocNumber(candidate);
   }
   return candidate;
+}
+
+/** Bill fields that always come from Settings → Company Profile & Invoice Header. */
+export const BILL_HEADER_FIELDS = [
+  "companyName",
+  "companyGstin",
+  "companyAddress",
+  "companyMobile",
+  "documentTitle",
+  "copyLabel",
+  "bankDetails",
+  "termsAndConditions",
+  "authorisedSignatoryText",
+] as const;
+
+/** Company header, bank details and terms for a new bill, taken from Settings. */
+export async function billHeaderFromSettings() {
+  const s = await CompanySettings.findOne().lean();
+  return {
+    companyName: s?.companyName || "",
+    companyGstin: s?.companyGstin || "",
+    companyAddress: s?.companyAddress || "",
+    companyMobile: s?.companyMobile || "",
+    documentTitle: s?.documentTitle || "BILL OF SUPPLY",
+    copyLabel: s?.copyLabel || "Original Copy",
+    bankDetails: {
+      accountName: s?.bankAccountName || "",
+      accountNumber: s?.bankAccountNumber || "",
+      ifscCode: s?.bankIfsc || "",
+      bankBranch: s?.bankBranch || "",
+    },
+    termsAndConditions: s?.termsAndConditions || [],
+    authorisedSignatoryText: s?.authorisedSignatoryText || "",
+  };
 }
 
 /** Turn a thrown error into a JSON response body + status for route handlers. */

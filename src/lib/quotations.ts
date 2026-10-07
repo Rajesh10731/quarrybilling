@@ -4,6 +4,7 @@ import { CompanySettings } from "@/models/CompanySettings";
 import { numberToWords } from "@/lib/utils";
 import {
   LedgerError,
+  billHeaderFromSettings,
   exactName,
   incrementDocNumber,
   recalcBill,
@@ -164,7 +165,6 @@ export async function convertQuotationToBill(quotation: IQuotation, opts: { invo
     throw new LedgerError(`Invoice number "${invoiceNo}" is already used by another bill`, 409);
   }
 
-  const settings = await CompanySettings.findOne().lean();
   const party = {
     name: quotation.customer.name,
     mobile: quotation.customer.mobile,
@@ -175,16 +175,14 @@ export async function convertQuotationToBill(quotation: IQuotation, opts: { invo
   await upsertCustomer({ ...party, deliveryPlace: quotation.deliveryPlace });
 
   const bill = await Bill.create({
+    // Company header, bank details and terms from Settings (same as bills made from the form)
+    ...(await billHeaderFromSettings()),
     invoiceNo,
     date: toISODate(opts.date) || todayISO(),
     vehicleNo: String(opts.vehicleNo || "").trim(),
     deliveryPlace: quotation.deliveryPlace,
     loadingCharges: quotation.loadingCharges,
     lorryFreight: quotation.lorryFreight,
-    companyName: settings?.companyName || quotation.companyName,
-    companyGstin: settings?.companyGstin || quotation.companyGstin,
-    documentTitle: settings?.documentTitle || "BILL OF SUPPLY",
-    copyLabel: settings?.copyLabel || "Original Copy",
     billedTo: party,
     shippedTo: party,
     items: quotation.items.map((it) => ({
@@ -203,14 +201,6 @@ export async function convertQuotationToBill(quotation: IQuotation, opts: { invo
     totalTax: quotation.totalTax,
     grandTotal: quotation.grandTotal,
     amountInWords: quotation.amountInWords || numberToWords(quotation.grandTotal),
-    bankDetails: {
-      accountName: settings?.bankAccountName || "",
-      accountNumber: settings?.bankAccountNumber || "",
-      ifscCode: settings?.bankIfsc || "",
-      bankBranch: settings?.bankBranch || "",
-    },
-    termsAndConditions: settings?.termsAndConditions || [],
-    authorisedSignatoryText: settings?.authorisedSignatoryText || "",
     paymentStatus: "UNPAID",
     paidAmount: 0,
   });

@@ -20,10 +20,14 @@ import {
   Scale,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import DateRangeFilter, { DateRange, inDateRange } from "@/components/DateRangeFilter";
 
 export default function BillsListPage() {
   const router = useRouter();
-  const [bills, setBills] = useState<any[]>([]);
+  const [allBills, setBills] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
+  // Everything below (cards, tabs, table) works on the bills inside the chosen dates
+  const bills = useMemo(() => inDateRange(allBills, dateRange, (b) => b.date), [allBills, dateRange]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PAID" | "UNPAID" | "PARTIAL">("ALL");
@@ -161,9 +165,9 @@ export default function BillsListPage() {
       </div>
 
       {/* Search & Status Filter Tabs Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+      <div className="flex flex-col lg:flex-row lg:flex-wrap justify-between items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
         {/* Search Input */}
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full lg:w-80">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
@@ -181,6 +185,8 @@ export default function BillsListPage() {
             </button>
           )}
         </div>
+
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
         {/* Filter Status Tabs */}
         <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/80 w-full sm:w-auto overflow-x-auto touch-scroll">
