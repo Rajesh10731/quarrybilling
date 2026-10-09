@@ -36,12 +36,13 @@ export function inDateRange<T>(records: T[], range: DateRange, getDate: (r: T) =
 export default function DateRangeFilter({ value, onChange }: { value: DateRange; onChange: (range: DateRange) => void }) {
   const active = presets().find((p) => p.range.from === value.from && p.range.to === value.to)?.label;
   const inputCls =
-    "bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none";
+    "w-full sm:w-auto bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 sm:py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-1.5">
-        <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
+    <div className="w-full lg:w-auto flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+      {/* Phones: From and To stacked full width (16px inputs do not fit side by side) */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 w-full sm:w-auto">
+        <CalendarDays className="hidden sm:block w-4 h-4 text-slate-400 shrink-0" />
         <label className="sr-only" htmlFor="date-from">From date</label>
         <input
           id="date-from"
@@ -52,7 +53,7 @@ export default function DateRangeFilter({ value, onChange }: { value: DateRange;
           className={inputCls}
           title="From date"
         />
-        <span className="text-xs text-slate-500">to</span>
+        <span className="hidden sm:inline text-xs text-slate-500 shrink-0">to</span>
         <label className="sr-only" htmlFor="date-to">To date</label>
         <input
           id="date-to"
@@ -64,18 +65,19 @@ export default function DateRangeFilter({ value, onChange }: { value: DateRange;
           title="To date"
         />
         {(value.from || value.to) && (
-          <button type="button" onClick={() => onChange({ from: "", to: "" })} title="Clear dates" className="p-1 text-slate-400 hover:text-red-400">
+          <button type="button" onClick={() => onChange({ from: "", to: "" })} title="Clear dates" className="self-end sm:self-auto flex items-center gap-1 p-2 sm:p-1 shrink-0 text-xs text-slate-400 hover:text-red-400">
             <X className="w-3.5 h-3.5" />
+            <span className="sm:hidden">Clear dates</span>
           </button>
         )}
       </div>
-      <div className="flex gap-1">
+      <div className="flex gap-1 w-full sm:w-auto">
         {presets().map((p) => (
           <button
             key={p.label}
             type="button"
             onClick={() => onChange(p.range)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${
+            className={`flex-1 sm:flex-none px-2.5 py-2 sm:py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors ${
               active === p.label ? "bg-amber-500 text-slate-950" : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200"
             }`}
           >

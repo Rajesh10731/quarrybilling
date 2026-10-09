@@ -416,7 +416,7 @@ export default function CustomerPaymentReportPage() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="bg-transparent text-white font-medium focus:outline-none text-xs"
+                className="bg-transparent text-white font-medium focus:outline-none text-xs py-1.5"
               />
             </div>
             <span className="text-slate-500 font-bold">To:</span>
@@ -424,7 +424,7 @@ export default function CustomerPaymentReportPage() {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="bg-transparent text-white font-medium focus:outline-none text-xs flex-1 sm:flex-none"
+              className="bg-transparent text-white font-medium focus:outline-none text-xs py-1.5 flex-1 sm:flex-none"
             />
           </div>
 

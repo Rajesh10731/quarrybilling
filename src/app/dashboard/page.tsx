@@ -241,18 +241,18 @@ export default async function DashboardPage() {
                     <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[11px] text-slate-400">
                       <span className="flex items-center gap-1">
                         <Clock className="w-2.5 h-2.5 text-slate-500" />
-                        {bill.date}
+                        {formatDate(bill.date)}
                       </span>
                       <div className="flex items-center gap-1.5">
                         <Link
                           href={`/bills/${bill._id.toString()}`}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-[10px] transition-colors"
+                          className="px-3 py-2 sm:px-2.5 sm:py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-[11px] sm:text-[10px] transition-colors"
                         >
                           View
                         </Link>
                         <Link
                           href={`/bills/${bill._id.toString()}/print`}
-                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] transition-colors flex items-center gap-1"
+                          className="px-3 py-2 sm:px-2.5 sm:py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-[11px] sm:text-[10px] transition-colors flex items-center gap-1"
                         >
                           <Printer className="w-3 h-3" />
                           <span>Print</span>
@@ -362,13 +362,13 @@ export default async function DashboardPage() {
                       <div className="flex items-center gap-1.5">
                         <Link
                           href={`/purchases/${purchase._id.toString()}`}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-[10px] transition-colors"
+                          className="px-3 py-2 sm:px-2.5 sm:py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-[11px] sm:text-[10px] transition-colors"
                         >
                           View
                         </Link>
                         <Link
                           href={`/purchases/${purchase._id.toString()}/print`}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-[10px] border border-slate-700 transition-colors flex items-center gap-1"
+                          className="px-3 py-2 sm:px-2.5 sm:py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-[10px] border border-slate-700 transition-colors flex items-center gap-1"
                         >
                           <Printer className="w-3 h-3" />
                           <span>Print</span>

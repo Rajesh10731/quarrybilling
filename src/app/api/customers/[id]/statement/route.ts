@@ -34,8 +34,10 @@ function billRows(bill: IBill) {
   return items.map((item) => {
     const loading = share(bill.loadingCharges);
     const lorryFri = share(bill.lorryFreight);
-    const total = round2((item.amount || 0) + loading + lorryFri);
-    return { ...base, material: item.description, rate: item.price, qty: item.qty, unit: item.unit, amount: item.amount, loading, lorryFri, total, debit: total };
+    // Amount is shown net of the bill discount (spread evenly over its items)
+    const amount = round2((item.amount || 0) - share(bill.discountAmount || 0));
+    const total = round2(amount + loading + lorryFri);
+    return { ...base, material: item.description, rate: item.price, qty: item.qty, unit: item.unit, amount, loading, lorryFri, total, debit: total };
   });
 }
 

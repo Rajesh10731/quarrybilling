@@ -396,7 +396,7 @@ export default function PurchaseForm({
                 <button
                   type="button"
                   onClick={() => setWeighbridgeMode(!weighbridgeMode)}
-                  className={`px-3 py-1 rounded-lg font-black transition-all ${
+                  className={`px-3 py-2 sm:py-1 rounded-lg font-black transition-all ${
                     weighbridgeMode
                       ? "bg-amber-500 text-slate-950 shadow-sm"
                       : "bg-slate-800 text-slate-400 hover:text-slate-200"

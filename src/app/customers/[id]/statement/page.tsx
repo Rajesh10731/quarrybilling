@@ -94,7 +94,7 @@ export default function CustomerStatementPage() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="bg-transparent text-white font-medium focus:outline-none text-xs"
+                className="bg-transparent text-white font-medium focus:outline-none text-xs py-1.5"
               />
             </div>
             <span className="text-slate-500 font-bold">to</span>
@@ -102,11 +102,11 @@ export default function CustomerStatementPage() {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="bg-transparent text-white font-medium focus:outline-none text-xs flex-1 sm:flex-none"
+              className="bg-transparent text-white font-medium focus:outline-none text-xs py-1.5 flex-1 sm:flex-none"
             />
             <button
               onClick={fetchStatement}
-              className="px-3.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-xs shadow-md transition-all ml-auto sm:ml-1"
+              className="px-4 py-2 sm:py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-xs shadow-md transition-all ml-auto sm:ml-1"
             >
               Filter
             </button>

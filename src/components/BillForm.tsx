@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft, Copy, UserCheck } from "lucide-react";
-import { numberToWords, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import BillPrintView, { BillData } from "./BillPrintView";
 import { StepFooter, StepIndicator } from "./FormSteps";
 import MaterialSelect from "./MaterialSelect";
+import { computeBillTotals, type DiscountType } from "@/lib/billTotals";
 
 const BILL_STEPS = [
   { title: "Goods & Amount", subtitle: "Materials, charges, tax & payment" },
@@ -75,6 +76,9 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
     totalQtyUnit: initialBill?.totalQtyUnit || "Tonne",
     taxRate: initialBill?.taxRate || "Exempt",
     taxableAmount: initialBill?.taxableAmount || 0,
+    discountType: (initialBill?.discountType as DiscountType) || "NONE",
+    discountValue: initialBill?.discountValue || 0,
+    discountAmount: initialBill?.discountAmount || 0,
     igstAmount: initialBill?.igstAmount || 0,
     cgstAmount: initialBill?.cgstAmount || 0,
     sgstAmount: initialBill?.sgstAmount || 0,
@@ -144,44 +148,26 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
     }
   }, [isEditing, initialBill]);
 
-  // Recalculate totals whenever items, loading charges, or lorry freight changes
+  // Recalculate totals (same rules as the server) whenever amounts, discount, GST or charges change
   useEffect(() => {
-    let sumQty = 0;
-    let sumTaxable = 0;
-    const updatedItems = formData.items.map((item, idx) => {
-      const q = Number(item.qty) || 0;
-      const p = Number(item.price) || 0;
-      const amt = Math.round(q * p * 100) / 100;
-      sumQty += q;
-      sumTaxable += amt;
-      return { ...item, sn: idx + 1, amount: amt };
-    });
-
-    let taxAmount = 0;
-    if (formData.taxRate !== "Exempt" && formData.taxRate !== "0%") {
-      const rateNum = parseFloat(formData.taxRate) || 0;
-      taxAmount = Math.round(((sumTaxable * rateNum) / 100) * 100) / 100;
-    }
-
-    const loading = Number(formData.loadingCharges) || 0;
-    const freight = Number(formData.lorryFreight) || 0;
-    const gTotal = Math.round((sumTaxable + taxAmount + loading + freight) * 100) / 100;
-    const words = numberToWords(gTotal);
-
+    const t = computeBillTotals(formData);
     setFormData((prev) => ({
       ...prev,
-      items: updatedItems,
-      totalQty: Math.round(sumQty * 100) / 100,
-      taxableAmount: Math.round(sumTaxable * 100) / 100,
-      totalTax: taxAmount,
-      grandTotal: gTotal,
-      amountInWords: words,
+      items: prev.items.map((item, idx) => ({ ...item, sn: idx + 1, amount: t.items[idx]?.amount ?? 0 })),
+      totalQty: t.totalQty,
+      taxableAmount: t.taxableAmount,
+      discountAmount: t.discountAmount,
+      totalTax: t.totalTax,
+      grandTotal: t.grandTotal,
+      amountInWords: t.amountInWords,
     }));
   }, [
     JSON.stringify(formData.items.map((i) => ({ q: i.qty, p: i.price }))),
     formData.taxRate,
     formData.loadingCharges,
     formData.lorryFreight,
+    formData.discountType,
+    formData.discountValue,
   ]);
 
   // Select customer from suggestion dropdown
@@ -268,6 +254,8 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         if (!(Number(it.qty) > 0)) return `Material ${i + 1} (${it.description}): enter a quantity greater than 0.`;
         if (!(Number(it.price) > 0)) return `Material ${i + 1} (${it.description}): enter the rate.`;
       }
+      const discountProblem = computeBillTotals(formData).error;
+      if (discountProblem) return discountProblem;
       if (!isEditing && formData.paymentStatus === "PARTIAL") {
         const part = Number(formData.paidAmount) || 0;
         if (part <= 0 || part >= formData.grandTotal) {
@@ -435,7 +423,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                   className="flex items-center space-x-1.5 text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg shadow-md transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Item Row</span>
+                  <span>Add Material</span>
                 </button>
               </div>
 
@@ -678,8 +666,55 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Breakdown, with the GST rate chosen right next to the tax it creates */}
                 <div className="bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-2">
+                  <div className="flex justify-between items-center py-[7px] border-b border-slate-800 text-[12px]">
+                    <span className="text-slate-400 font-medium">Material Amount</span>
+                    <span className="font-bold text-white">₹{formatCurrency(formData.taxableAmount)}</span>
+                  </div>
+                  {/* Discount: a % of the material amount or a fixed ₹ amount */}
+                  <div className="flex justify-between items-center gap-3 py-[5px] border-b border-slate-800 text-[12px]">
+                    <div className="flex items-center gap-2 text-slate-400 font-medium">
+                      Discount
+                      <div className="flex rounded-lg border border-slate-800 overflow-hidden" role="radiogroup" aria-label="Discount type">
+                        {(["PERCENT", "AMOUNT"] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            role="radio"
+                            aria-checked={formData.discountType === type}
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                discountType: formData.discountType === type ? "NONE" : type,
+                                discountValue: formData.discountType === type ? 0 : formData.discountValue,
+                              })
+                            }
+                            title={type === "PERCENT" ? "Discount as a percentage" : "Discount as a fixed amount"}
+                            className={`min-w-[34px] px-2.5 py-1.5 text-[12px] font-bold ${formData.discountType === type ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400 hover:text-slate-200"}`}
+                          >
+                            {type === "PERCENT" ? "%" : "₹"}
+                          </button>
+                        ))}
+                      </div>
+                      {formData.discountType !== "NONE" && (
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          max={formData.discountType === "PERCENT" ? 100 : undefined}
+                          step="0.01"
+                          value={formData.discountValue || ""}
+                          onChange={(e) => setFormData({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
+                          placeholder={formData.discountType === "PERCENT" ? "e.g. 5" : "e.g. 500"}
+                          aria-label={formData.discountType === "PERCENT" ? "Discount percentage" : "Discount amount"}
+                          className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[12px] text-white focus:border-amber-500 focus:outline-none"
+                        />
+                      )}
+                    </div>
+                    <span className={`font-bold ${formData.discountAmount ? "text-emerald-400" : "text-white"}`}>
+                      {formData.discountAmount ? `− ₹${formatCurrency(formData.discountAmount)}` : "₹0.00"}
+                    </span>
+                  </div>
                   {[
-                    ["Material Amount", formData.taxableAmount],
                     ["Loading Charges", Number(formData.loadingCharges) || 0],
                     ["Lorry Freight", Number(formData.lorryFreight) || 0],
                   ].map(([label, value]) => (
@@ -694,7 +729,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                       <select
                         value={formData.taxRate}
                         onChange={(e) => setFormData({ ...formData, taxRate: e.target.value })}
-                        title="GST is calculated on the material amount"
+                        title="GST is calculated on the material amount after discount"
                         className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[12px] text-white focus:border-amber-500 focus:outline-none"
                       >
                         <option value="Exempt">Exempt (0%)</option>

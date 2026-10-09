@@ -4,6 +4,7 @@ import { Bill } from "@/models/Bill";
 import { getSession } from "@/lib/auth";
 import {
   BILL_HEADER_FIELDS,
+  applyBillTotals,
   assertUniqueInvoiceNo,
   billHeaderFromSettings,
   containsText,
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
 
     body.invoiceNo = body.invoiceNo.trim();
     body.date = toISODate(body.date);
+    applyBillTotals(body);
     await assertUniqueInvoiceNo(body.invoiceNo);
 
     // Payment status is derived from receipts; an amount received at billing time is recorded as a receipt below.

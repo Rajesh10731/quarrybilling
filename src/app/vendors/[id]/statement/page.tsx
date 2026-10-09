@@ -291,7 +291,7 @@ export default function VendorStatementPage() {
                       type="button"
                       onClick={() => router.push(`/purchases/${p._id}`)}
                       title="Open purchase to view or record payments"
-                      className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase print:border-none cursor-pointer ${
+                      className={`px-2.5 py-1.5 sm:py-1 rounded text-[10px] font-bold uppercase print:border-none cursor-pointer ${
                         p.paymentStatus === "PAID"
                           ? "bg-emerald-100 text-emerald-800"
                           : p.paymentStatus === "PARTIAL"
@@ -306,14 +306,14 @@ export default function VendorStatementPage() {
                   <td className="p-2 text-right print:hidden space-x-1">
                     <Link
                       href={`/purchases/${p._id}`}
-                      className="p-1 hover:text-amber-600 inline-block"
+                      className="p-2 hover:text-amber-600 inline-block"
                       title="View Slip"
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </Link>
                     <Link
                       href={`/purchases/${p._id}/print`}
-                      className="p-1 hover:text-emerald-600 inline-block"
+                      className="p-2 hover:text-emerald-600 inline-block"
                       title="Print Slip"
                     >
                       <Printer className="w-3.5 h-3.5" />

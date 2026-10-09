@@ -322,7 +322,7 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
                   onClick={() => setForm((prev) => ({ ...prev, items: [...prev.items, emptyItem()] }))}
                   className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-amber-400"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Item
+                  <Plus className="w-3.5 h-3.5" /> Add Material
                 </button>
               </div>
               <div className="space-y-3">
