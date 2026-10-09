@@ -31,6 +31,9 @@ export interface QuotationData {
   lorryFreight: number;
   taxRate: string;
   taxableAmount?: number;
+  discountType?: "NONE" | "PERCENT" | "AMOUNT" | string;
+  discountValue?: number;
+  discountAmount?: number;
   totalTax?: number;
   grandTotal?: number;
   amountInWords?: string;
@@ -151,13 +154,19 @@ export default function QuotationPrintView({ quotation }: { quotation: Quotation
           <div className="col-span-5">
             {[
               ["Material Value", quotation.taxableAmount],
+              ...(quotation.discountAmount
+                ? [
+                    [`Less: Discount${quotation.discountType === "PERCENT" ? ` (${quotation.discountValue}%)` : ""}`, -quotation.discountAmount],
+                    ["Taxable Value", (quotation.taxableAmount || 0) - quotation.discountAmount],
+                  ]
+                : []),
               ...(quotation.taxRate && quotation.taxRate !== "Exempt" ? [[`GST @ ${quotation.taxRate}`, quotation.totalTax]] : []),
               ...(quotation.loadingCharges ? [["Loading Charges", quotation.loadingCharges]] : []),
               ...(quotation.lorryFreight ? [["Lorry Freight", quotation.lorryFreight]] : []),
             ].map(([label, value]) => (
               <div key={String(label)} className="flex justify-between px-2 py-1 border-b border-slate-300">
                 <span>{label}</span>
-                <span>₹{formatCurrency(Number(value) || 0)}</span>
+                <span>{Number(value) < 0 ? `− ₹${formatCurrency(-Number(value))}` : `₹${formatCurrency(Number(value) || 0)}`}</span>
               </div>
             ))}
             <div className="flex justify-between px-2 py-1.5 font-extrabold text-sm bg-slate-50">

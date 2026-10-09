@@ -8,6 +8,7 @@ import { formatCurrency, numberToWords } from "@/lib/utils";
 import QuotationPrintView, { type QuotationData, type QuotationItem } from "./QuotationPrintView";
 import MaterialSelect from "./MaterialSelect";
 import { StepFooter, StepIndicator } from "./FormSteps";
+import { computeBillTotals, type DiscountType } from "@/lib/billTotals";
 
 const UNITS = ["Tonne", "CFT", "Trips", "Kg", "Nos", "Load"];
 const TAX_RATES = [
@@ -83,6 +84,8 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
       loadingCharges: initialQuotation?.loadingCharges || 0,
       lorryFreight: initialQuotation?.lorryFreight || 0,
       taxRate: initialQuotation?.taxRate || "Exempt",
+      discountType: (initialQuotation?.discountType as DiscountType) || "NONE",
+      discountValue: initialQuotation?.discountValue || 0,
       notes: initialQuotation?.notes || "",
       terms: (initialQuotation?.termsAndConditions || []).join("\n"),
     };
@@ -117,13 +120,11 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
   }, [isEditing]);
 
   // Live preview of totals (the server recomputes the same way when saving)
+  // Same money rules as sales bills (and the server): discount on material, GST after discount, then charges
   const totals = useMemo(() => {
-    const lines = form.items.map((it) => round2((Number(it.qty) || 0) * (Number(it.price) || 0)));
-    const taxable = round2(lines.reduce((s, a) => s + a, 0));
-    const tax = form.taxRate === "Exempt" ? 0 : round2((taxable * parseFloat(form.taxRate)) / 100);
-    const grand = round2(taxable + tax + (Number(form.loadingCharges) || 0) + (Number(form.lorryFreight) || 0));
-    return { lines, taxable, tax, grand };
-  }, [form.items, form.taxRate, form.loadingCharges, form.lorryFreight]);
+    const t = computeBillTotals(form);
+    return { lines: t.items.map((it) => it.amount), taxable: t.taxableAmount, discount: t.discountAmount, tax: t.totalTax, grand: t.grandTotal, error: t.error };
+  }, [form]);
 
   const setCustomerField = (field: keyof typeof form.customer, value: string) =>
     setForm((prev) => ({ ...prev, customer: { ...prev.customer, [field]: value } }));
@@ -155,6 +156,7 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
       if (!form.validUntil || form.validUntil < form.date) return "Valid-until date cannot be before the quotation date.";
       const items = filledItems();
       if (!items.length) return "Add at least one material with quantity and rate.";
+      if (totals.error) return totals.error;
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
         if (!it.description.trim()) return `Material ${i + 1}: choose or type the material.`;
@@ -244,6 +246,9 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
     lorryFreight: Number(form.lorryFreight) || 0,
     taxRate: form.taxRate,
     taxableAmount: totals.taxable,
+    discountType: form.discountType,
+    discountValue: form.discountValue,
+    discountAmount: totals.discount,
     totalTax: totals.tax,
     grandTotal: totals.grand,
     amountInWords: numberToWords(totals.grand),
@@ -377,7 +382,45 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
                 <h2 className={headCls}>
                   <span className={badgeCls}>2</span> Charges &amp; GST
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <div>
+                    <label className={labelCls}>Discount</label>
+                    <div className="flex gap-2">
+                      <div className="flex rounded-lg border border-slate-800 overflow-hidden shrink-0" role="radiogroup" aria-label="Discount type">
+                        {(["PERCENT", "AMOUNT"] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            role="radio"
+                            aria-checked={form.discountType === type}
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                discountType: form.discountType === type ? "NONE" : type,
+                                discountValue: form.discountType === type ? 0 : form.discountValue,
+                              })
+                            }
+                            title={type === "PERCENT" ? "Discount as a percentage" : "Discount as a fixed amount"}
+                            className={`min-w-[38px] px-2.5 py-2 text-sm font-bold ${form.discountType === type ? "bg-amber-500 text-slate-950" : "bg-slate-950 text-slate-400 hover:text-slate-200"}`}
+                          >
+                            {type === "PERCENT" ? "%" : "₹"}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        disabled={form.discountType === "NONE"}
+                        value={form.discountValue || ""}
+                        onChange={(e) => setForm({ ...form, discountValue: parseFloat(e.target.value) || 0 })}
+                        placeholder={form.discountType === "NONE" ? "Pick % or ₹" : form.discountType === "PERCENT" ? "e.g. 5" : "e.g. 500"}
+                        aria-label={form.discountType === "PERCENT" ? "Discount percentage" : "Discount amount"}
+                        className={`${inputCls} min-w-0 disabled:opacity-50`}
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className={labelCls}>Loading Charges (₹)</label>
                     <input type="number" min="0" step="0.01" className={inputCls} value={form.loadingCharges || ""} onChange={(e) => setForm({ ...form, loadingCharges: parseFloat(e.target.value) || 0 })} placeholder="0" />
@@ -402,6 +445,12 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
                   <span className={badgeCls}>3</span> Quotation Total
                 </h2>
                 <div className="flex justify-between"><span className="text-slate-400">Material value</span><span>₹{formatCurrency(totals.taxable)}</span></div>
+                {totals.discount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Discount{form.discountType === "PERCENT" ? ` (${form.discountValue}%)` : ""}</span>
+                    <span className="text-emerald-400">− ₹{formatCurrency(totals.discount)}</span>
+                  </div>
+                )}
                 {form.taxRate !== "Exempt" && (
                   <div className="flex justify-between"><span className="text-slate-400">GST {form.taxRate}</span><span>₹{formatCurrency(totals.tax)}</span></div>
                 )}
