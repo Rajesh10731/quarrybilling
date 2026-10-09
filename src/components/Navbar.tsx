@@ -74,7 +74,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
       links: [
         { name: "Dashboard", subtitle: "Live Overview & Analytics", href: "/dashboard", icon: Home },
         { name: "Sales Bills", subtitle: "Customer Invoices & Outward", href: "/bills", icon: FileText },
-        { name: "Quotations", subtitle: "Sales Quotes & Rate Offers", href: "/quotations", icon: ClipboardList },
+        { name: "Quotations", subtitle: "Sales Quotes", href: "/quotations", icon: ClipboardList },
         { name: "Purchases", subtitle: "Inward Lorry Raw Materials", href: "/purchases", icon: Truck },
       ],
     },
@@ -394,12 +394,12 @@ export default function Navbar({ user }: { user?: any } = {}) {
         <button
           onClick={() => setShowQuickCreateModal(true)}
           className="flex flex-col items-center -mt-6 group"
-          aria-label="Create New Record"
+          aria-label="Create new"
+          title="Create new"
         >
           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 text-slate-950 flex items-center justify-center shadow-[0_6px_16px_rgba(102,118,204,0.35)] ring-4 ring-slate-950 group-active:scale-95 transition-all font-black border border-amber-300/40">
             <Plus className="w-6 h-6 stroke-[3]" />
           </div>
-          <span className="text-[10px] text-amber-400 font-black mt-0.5 drop-shadow">+ Add</span>
         </button>
 
         <Link
@@ -455,6 +455,20 @@ export default function Navbar({ user }: { user?: any } = {}) {
                 <div>
                   <div className="text-sm font-black text-amber-300">Sales Invoice (Customer Bill)</div>
                   <div className="text-xs text-slate-400">Dispatch stone/sand outward to client</div>
+                </div>
+              </Link>
+
+              <Link
+                href="/quotations/new"
+                onClick={() => setShowQuickCreateModal(false)}
+                className="flex items-center space-x-3 p-4 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 rounded-2xl text-slate-100 transition-all active:scale-98"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-white">Quotation</div>
+                  <div className="text-xs text-slate-400">Quote material rates to a customer</div>
                 </div>
               </Link>
 

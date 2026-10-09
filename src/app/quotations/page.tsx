@@ -94,7 +94,7 @@ export default function QuotationsPage() {
       </div>
 
       <div className="glass-card rounded-2xl p-3 border border-slate-800 flex flex-col lg:flex-row lg:flex-wrap gap-3 justify-between items-center">
-        <div className="relative md:w-96">
+        <div className="relative w-full lg:w-96">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             value={search}
@@ -104,7 +104,7 @@ export default function QuotationsPage() {
           />
         </div>
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
-        <div className="flex gap-1 overflow-x-auto touch-scroll">
+        <div className="flex gap-1 overflow-x-auto touch-scroll w-full lg:w-auto">
           {TABS.map((t) => (
             <button
               key={t}

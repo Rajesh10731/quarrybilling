@@ -5,6 +5,7 @@ import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
 import {
   BILL_HEADER_FIELDS,
+  applyBillTotals,
   assertUniqueInvoiceNo,
   errorResponse,
   recalcBill,
@@ -65,6 +66,7 @@ export async function PUT(
     for (const field of BILL_HEADER_FIELDS) delete body[field];
 
     if (body.date) body.date = toISODate(body.date);
+    applyBillTotals(body);
     if (body.invoiceNo !== undefined) {
       body.invoiceNo = String(body.invoiceNo).trim();
       if (!body.invoiceNo) {

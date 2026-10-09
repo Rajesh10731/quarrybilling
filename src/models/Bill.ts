@@ -49,6 +49,9 @@ export interface IBill extends Document {
   totalQtyUnit: string;
   taxRate: string;
   taxableAmount: number;
+  discountType?: "NONE" | "PERCENT" | "AMOUNT";
+  discountValue?: number;
+  discountAmount?: number;
   igstAmount: number;
   cgstAmount: number;
   sgstAmount: number;
@@ -116,6 +119,10 @@ const BillSchema = new Schema<IBill>(
     totalQtyUnit: { type: String, default: "Tonne" },
     taxRate: { type: String, default: "Exempt" },
     taxableAmount: { type: Number, required: true },
+    // Discount on the material amount, given as a % or a fixed ₹ amount; GST is charged after it
+    discountType: { type: String, enum: ["NONE", "PERCENT", "AMOUNT"], default: "NONE" },
+    discountValue: { type: Number, default: 0, min: 0 },
+    discountAmount: { type: Number, default: 0, min: 0 },
     igstAmount: { type: Number, default: 0 },
     cgstAmount: { type: Number, default: 0 },
     sgstAmount: { type: Number, default: 0 },

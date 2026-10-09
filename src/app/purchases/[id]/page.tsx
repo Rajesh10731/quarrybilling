@@ -344,7 +344,7 @@ export default function PurchaseDetailPage() {
                           <td className="py-2 text-right">
                             <button
                               onClick={() => handleDeletePayment(p._id)}
-                              className="text-red-400 hover:text-red-300 text-[11px] font-semibold"
+                              className="px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-950 text-[11px] font-semibold"
                             >
                               Delete
                             </button>

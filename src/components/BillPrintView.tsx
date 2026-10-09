@@ -46,6 +46,9 @@ export interface BillData {
   totalQtyUnit: string;
   taxRate: string;
   taxableAmount: number;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
   igstAmount: number;
   cgstAmount: number;
   sgstAmount: number;
@@ -71,7 +74,13 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
   const emptyRowsCount = Math.max(0, minRows - items.length);
 
   // Material value plus the extra charges that make up the grand total
+  const discount = bill.discountAmount || 0;
+  const taxableValue = Math.round(((bill.taxableAmount || 0) - discount) * 100) / 100;
   const chargeRows: [string, number][] = [["Material Amount", bill.taxableAmount || 0]];
+  if (discount) {
+    chargeRows.push([`Less: Discount${bill.discountType === "PERCENT" ? ` (${bill.discountValue}%)` : ""}`, -discount]);
+    chargeRows.push(["Taxable Value", taxableValue]);
+  }
   if (bill.loadingCharges) chargeRows.push(["Loading Charges", bill.loadingCharges]);
   if (bill.lorryFreight) chargeRows.push(["Lorry Freight", bill.lorryFreight]);
   if (bill.totalTax) chargeRows.push([`GST ${bill.taxRate || ""}`.trim(), bill.totalTax]);
@@ -232,7 +241,7 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
             {chargeRows.map(([label, value]) => (
               <div key={label} className="flex justify-between border-b border-slate-200 last:border-b-0">
                 <div className="p-1 pl-2 flex-1 text-right font-semibold border-r border-black">{label}</div>
-                <div className="p-1 w-28 text-right font-semibold">{formatCurrency(value)}</div>
+                <div className="p-1 w-28 text-right font-semibold">{value < 0 ? `− ${formatCurrency(-value)}` : formatCurrency(value)}</div>
               </div>
             ))}
           </div>
@@ -258,7 +267,7 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
           </div>
           <div className="grid grid-cols-4 text-center p-1 border-b border-black">
             <span>{bill.taxRate || "Exempt"}</span>
-            <span>{formatCurrency(bill.taxableAmount)}</span>
+            <span>{formatCurrency(taxableValue)}</span>
             <span>--</span>
             <span>{formatCurrency(bill.totalTax)}</span>
           </div>

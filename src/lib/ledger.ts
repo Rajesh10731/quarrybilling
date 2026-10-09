@@ -4,6 +4,7 @@ import { Payment, IPayment } from "@/models/Payment";
 import { Customer } from "@/models/Customer";
 import { Vendor } from "@/models/Vendor";
 import { CompanySettings } from "@/models/CompanySettings";
+import { computeBillTotals } from "@/lib/billTotals";
 
 export type PaymentStatus = "UNPAID" | "PARTIAL" | "PAID";
 
@@ -227,6 +228,20 @@ export async function suggestNextInvoiceNo() {
     candidate = incrementDocNumber(candidate);
   }
   return candidate;
+}
+
+/**
+ * Recalculate a bill's money fields on the server (items, discount, GST, totals, words)
+ * with the same rules as the bill form, so totals sent by a browser are never trusted.
+ */
+export function applyBillTotals(body: any) {
+  if (!Array.isArray(body.items)) return;
+  const totals = computeBillTotals(body);
+  if (totals.error) throw new LedgerError(totals.error);
+  const fields: Record<string, unknown> = { ...totals };
+  delete fields.error;
+  delete fields.taxableValue;
+  Object.assign(body, fields);
 }
 
 /** Bill fields that always come from Settings → Company Profile & Invoice Header. */

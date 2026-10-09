@@ -37,6 +37,9 @@ export interface IQuotation extends Document {
   lorryFreight: number;
   taxRate: string;
   taxableAmount: number;
+  discountType: "NONE" | "PERCENT" | "AMOUNT";
+  discountValue: number;
+  discountAmount: number;
   totalTax: number;
   grandTotal: number;
   amountInWords: string;
@@ -87,6 +90,10 @@ const QuotationSchema = new Schema<IQuotation>(
     lorryFreight: { type: Number, default: 0, min: 0 },
     taxRate: { type: String, default: "Exempt" },
     taxableAmount: { type: Number, required: true },
+    // Discount on the material amount (% or fixed ₹); GST is charged after it, same as bills
+    discountType: { type: String, enum: ["NONE", "PERCENT", "AMOUNT"], default: "NONE" },
+    discountValue: { type: Number, default: 0, min: 0 },
+    discountAmount: { type: Number, default: 0, min: 0 },
     totalTax: { type: Number, default: 0 },
     grandTotal: { type: Number, required: true },
     amountInWords: { type: String, default: "" },

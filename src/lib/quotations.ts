@@ -2,6 +2,7 @@ import { Quotation, IQuotation } from "@/models/Quotation";
 import { Bill } from "@/models/Bill";
 import { CompanySettings } from "@/models/CompanySettings";
 import { numberToWords } from "@/lib/utils";
+import { computeBillTotals } from "@/lib/billTotals";
 import {
   LedgerError,
   billHeaderFromSettings,
@@ -79,9 +80,10 @@ export function buildQuotationFields(body: any) {
   if (loadingCharges < 0 || lorryFreight < 0) throw new LedgerError("Charges cannot be negative");
 
   const taxRate = TAX_RATES.includes(body.taxRate) ? body.taxRate : "Exempt";
-  const taxableAmount = round2(items.reduce((s, it) => s + it.amount, 0));
-  const totalTax = taxRate === "Exempt" ? 0 : round2((taxableAmount * parseFloat(taxRate)) / 100);
-  const grandTotal = round2(taxableAmount + totalTax + loadingCharges + lorryFreight);
+  // Same money rules as sales bills (discount on material, GST after discount, then charges)
+  const totals = computeBillTotals({ items, taxRate, loadingCharges, lorryFreight, discountType: body.discountType, discountValue: body.discountValue });
+  if (totals.error) throw new LedgerError(totals.error);
+  const { taxableAmount, discountType, discountValue, discountAmount, totalTax, grandTotal } = totals;
 
   const termsAndConditions: string[] = (Array.isArray(body.termsAndConditions) ? body.termsAndConditions : String(body.termsAndConditions ?? "").split("\n"))
     .map((t: unknown) => text(t))
@@ -104,6 +106,9 @@ export function buildQuotationFields(body: any) {
     lorryFreight,
     taxRate,
     taxableAmount,
+    discountType,
+    discountValue,
+    discountAmount,
     totalTax,
     grandTotal,
     amountInWords: numberToWords(grandTotal),
@@ -198,6 +203,9 @@ export async function convertQuotationToBill(quotation: IQuotation, opts: { invo
     totalQtyUnit: quotation.items[0]?.unit || "Tonne",
     taxRate: quotation.taxRate,
     taxableAmount: quotation.taxableAmount,
+    discountType: quotation.discountType || "NONE",
+    discountValue: quotation.discountValue || 0,
+    discountAmount: quotation.discountAmount || 0,
     totalTax: quotation.totalTax,
     grandTotal: quotation.grandTotal,
     amountInWords: quotation.amountInWords || numberToWords(quotation.grandTotal),
