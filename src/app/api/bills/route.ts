@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
+import { Customer } from "@/models/Customer";
+import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
 import {
   BILL_HEADER_FIELDS,
@@ -45,8 +47,67 @@ export async function GET(req: Request) {
       };
     }
 
-    const bills = await Bill.find(filter).sort({ createdAt: -1 });
-    return NextResponse.json(bills);
+    const bills = await Bill.find(filter).sort({ createdAt: -1 }).lean();
+
+    // Compute Customer Balances Till Date
+    const customers = await Customer.find().select("name openingBalance").lean();
+    const allBills = await Bill.find().select("billedTo.name grandTotal lorryFreight loadingCharges").lean();
+    const allPayments = await Payment.find().select("customerName amount").lean();
+
+    const customerBalanceMap: Record<string, number> = {};
+    const customerTotalBilledMap: Record<string, number> = {};
+    const customerTotalPaidMap: Record<string, number> = {};
+    const customerTotalTransportMap: Record<string, number> = {};
+    const customerOpeningMap: Record<string, number> = {};
+
+    customers.forEach((c) => {
+      const key = c.name.trim().toUpperCase();
+      customerOpeningMap[key] = c.openingBalance || 0;
+      customerBalanceMap[key] = c.openingBalance || 0;
+      customerTotalBilledMap[key] = 0;
+      customerTotalPaidMap[key] = 0;
+      customerTotalTransportMap[key] = 0;
+    });
+
+    allBills.forEach((b) => {
+      const key = (b.billedTo?.name || "").trim().toUpperCase();
+      if (!key) return;
+      customerTotalBilledMap[key] = (customerTotalBilledMap[key] || 0) + (b.grandTotal || 0);
+      customerTotalTransportMap[key] = (customerTotalTransportMap[key] || 0) + (b.lorryFreight || 0);
+    });
+
+    allPayments.forEach((p) => {
+      const key = (p.customerName || "").trim().toUpperCase();
+      if (!key) return;
+      customerTotalPaidMap[key] = (customerTotalPaidMap[key] || 0) + (p.amount || 0);
+    });
+
+    const allCustomerKeys = new Set([
+      ...Object.keys(customerOpeningMap),
+      ...Object.keys(customerTotalBilledMap),
+      ...Object.keys(customerTotalPaidMap),
+    ]);
+
+    for (const key of allCustomerKeys) {
+      const opening = customerOpeningMap[key] || 0;
+      const billed = customerTotalBilledMap[key] || 0;
+      const paid = customerTotalPaidMap[key] || 0;
+      customerBalanceMap[key] = Math.max(0, round2(opening + billed - paid));
+    }
+
+    const enrichedBills = bills.map((b) => {
+      const key = (b.billedTo?.name || "").trim().toUpperCase();
+      const customerTillDateDue = customerBalanceMap[key] ?? Math.max(0, round2((b.grandTotal || 0) - (b.paidAmount || 0)));
+      return {
+        ...b,
+        customerBalanceTillDate: customerTillDateDue,
+        customerTotalBilled: customerTotalBilledMap[key] ?? (b.grandTotal || 0),
+        customerTotalPaid: customerTotalPaidMap[key] ?? (b.paidAmount || 0),
+        customerTotalTransport: customerTotalTransportMap[key] ?? (b.lorryFreight || 0),
+      };
+    });
+
+    return NextResponse.json(enrichedBills);
   } catch (error: any) {
     const { body, status } = errorResponse(error, "Failed to fetch bills");
     return NextResponse.json(body, { status });

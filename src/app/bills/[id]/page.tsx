@@ -303,11 +303,16 @@ export default function BillDetailPage() {
           </div>
         </div>
 
-        {/* 3 Metric Pills */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* 4 Metric Pills */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
             <span className="text-[11px] text-slate-400 font-medium block">Total Bill Amount</span>
             <span className="text-xl font-black text-white">₹{formatCurrency(grandTotal)}</span>
+          </div>
+
+          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
+            <span className="text-[11px] text-amber-400 font-medium block">Transport Charges (Freight)</span>
+            <span className="text-xl font-black text-amber-300">₹{formatCurrency((bill as any).lorryFreight || 0)}</span>
           </div>
 
           <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800">

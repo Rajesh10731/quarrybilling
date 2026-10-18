@@ -643,7 +643,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Lorry Freight (₹)</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Transport Charges / Lorry Freight (₹)</label>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -651,7 +651,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                     value={formData.lorryFreight || ""}
                     onChange={(e) => setFormData({ ...formData, lorryFreight: parseFloat(e.target.value) || 0 })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
-                    placeholder="e.g. Freight charges"
+                    placeholder="e.g. 3500.00 (Freight charges)"
                   />
                 </div>
               </div>
@@ -716,7 +716,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                   </div>
                   {[
                     ["Loading Charges", Number(formData.loadingCharges) || 0],
-                    ["Lorry Freight", Number(formData.lorryFreight) || 0],
+                    ["Transport Charges (Freight)", Number(formData.lorryFreight) || 0],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between items-center py-[7px] border-b border-slate-800 text-[12px]">
                       <span className="text-slate-400 font-medium">{label}</span>

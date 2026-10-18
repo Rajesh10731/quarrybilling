@@ -82,7 +82,7 @@ export default function BillPrintView({ bill }: { bill: BillData }) {
     chargeRows.push(["Taxable Value", taxableValue]);
   }
   if (bill.loadingCharges) chargeRows.push(["Loading Charges", bill.loadingCharges]);
-  if (bill.lorryFreight) chargeRows.push(["Lorry Freight", bill.lorryFreight]);
+  if (bill.lorryFreight) chargeRows.push(["Transport Charges (Lorry Freight)", bill.lorryFreight]);
   if (bill.totalTax) chargeRows.push([`GST ${bill.taxRate || ""}`.trim(), bill.totalTax]);
 
   // Payment line. Before saving, "Full payment" has no receipt yet, so it counts as the whole total.

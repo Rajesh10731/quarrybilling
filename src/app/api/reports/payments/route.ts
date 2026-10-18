@@ -62,12 +62,15 @@ export async function GET(req: Request) {
     const allBills = await Bill.find(billFilter).sort({ date: -1, createdAt: -1 });
 
     // 5. Calculate Customer-wise summaries
-    // Map customer name -> { totalBilled, totalPaid, balanceDue, billsCount, lastPaymentDate }
+    // Map customer name -> { name, mobile, openingBalance, totalBilled, totalPaid, totalTransportCharges, totalLoadingCharges, balanceDue, billsCount, lastPaymentDate }
     const customerMap = new Map<string, {
       name: string;
+      mobile: string;
       openingBalance: number;
       totalBilled: number;
       totalPaid: number;
+      totalTransportCharges: number;
+      totalLoadingCharges: number;
       balanceDue: number;
       billsCount: number;
       lastPaymentDate: string;
@@ -79,9 +82,12 @@ export async function GET(req: Request) {
       const cName = c.name.trim().toUpperCase();
       customerMap.set(cName, {
         name: c.name.trim(),
+        mobile: c.mobile || "",
         openingBalance: c.openingBalance || 0,
         totalBilled: 0,
         totalPaid: 0,
+        totalTransportCharges: 0,
+        totalLoadingCharges: 0,
         balanceDue: 0,
         billsCount: 0,
         lastPaymentDate: "--",
@@ -95,9 +101,12 @@ export async function GET(req: Request) {
       if (!customerMap.has(bCust)) {
         customerMap.set(bCust, {
           name: b.billedTo?.name?.trim() || bCust,
+          mobile: b.billedTo?.mobile || "",
           openingBalance: 0,
           totalBilled: 0,
           totalPaid: 0,
+          totalTransportCharges: 0,
+          totalLoadingCharges: 0,
           balanceDue: 0,
           billsCount: 0,
           lastPaymentDate: "--",
@@ -105,7 +114,10 @@ export async function GET(req: Request) {
         });
       }
       const entry = customerMap.get(bCust)!;
+      if (!entry.mobile && b.billedTo?.mobile) entry.mobile = b.billedTo.mobile;
       entry.totalBilled += b.grandTotal || 0;
+      entry.totalTransportCharges += b.lorryFreight || 0;
+      entry.totalLoadingCharges += b.loadingCharges || 0;
       entry.billsCount += 1;
       if (b.paymentStatus !== "PAID") {
         entry.unpaidBillsCount += 1;
@@ -128,6 +140,8 @@ export async function GET(req: Request) {
     // Compute balanceDue for all customers
     const customerSummaries = Array.from(customerMap.values()).map((c) => ({
       ...c,
+      totalTransportCharges: round2(c.totalTransportCharges),
+      totalLoadingCharges: round2(c.totalLoadingCharges),
       // Owed = opening balance + everything billed - everything received
       balanceDue: Math.max(0, round2(c.openingBalance + c.totalBilled - c.totalPaid)),
     })).filter((c) => {
@@ -137,9 +151,39 @@ export async function GET(req: Request) {
       return c.totalBilled > 0 || c.totalPaid > 0 || c.openingBalance !== 0;
     }).sort((a, b) => b.balanceDue - a.balanceDue);
 
+    // Build detailed bills list for sales & balance audit
+    const reportBills = allBills.map((b) => {
+      const bCust = (b.billedTo?.name || "").trim().toUpperCase();
+      const custSummary = customerMap.get(bCust);
+      const paid = b.paidAmount || 0;
+      const grand = b.grandTotal || 0;
+      const due = Math.max(0, round2(grand - paid));
+      return {
+        _id: b._id,
+        invoiceNo: b.invoiceNo,
+        date: b.date,
+        customerName: b.billedTo?.name || "--",
+        customerMobile: b.billedTo?.mobile || custSummary?.mobile || "",
+        deliveryPlace: b.deliveryPlace || b.station || "",
+        vehicleNo: b.vehicleNo || "--",
+        transport: b.transport || "--",
+        transportCharges: b.lorryFreight || 0,
+        loadingCharges: b.loadingCharges || 0,
+        totalQty: b.totalQty || 0,
+        totalQtyUnit: b.totalQtyUnit || "Tonne",
+        grandTotal: grand,
+        paidAmount: paid,
+        balanceDue: due,
+        customerBalanceTillDate: custSummary?.balanceDue ?? due,
+        paymentStatus: b.paymentStatus || "UNPAID",
+      };
+    });
+
     // 6. Overall KPIs for filtered view
     const totalCollected = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const totalBilled = allBills.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+    const totalTransportCharges = allBills.reduce((sum, b) => sum + (b.lorryFreight || 0), 0);
+    const totalLoadingCharges = allBills.reduce((sum, b) => sum + (b.loadingCharges || 0), 0);
     const totalOutstanding = customerSummaries.reduce((sum, c) => sum + c.balanceDue, 0);
 
     // 7. Fetch Company Settings for print letterhead
@@ -153,11 +197,15 @@ export async function GET(req: Request) {
     return NextResponse.json({
       payments,
       customerSummaries,
+      bills: reportBills,
       kpi: {
         totalCollected,
         totalBilled,
         totalOutstanding,
+        totalTransportCharges,
+        totalLoadingCharges,
         transactionCount: payments.length,
+        billsCount: allBills.length,
       },
       customers: customers.map((c) => ({ _id: c._id, name: c.name })),
       company,

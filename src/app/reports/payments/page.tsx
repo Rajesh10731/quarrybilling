@@ -22,6 +22,9 @@ import {
   Building2,
   RefreshCw,
   ExternalLink,
+  Truck,
+  Phone,
+  MapPin,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -31,12 +34,14 @@ export default function CustomerPaymentReportPage() {
   // State
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"transactions" | "customers">("transactions");
+  const [activeTab, setActiveTab] = useState<"customers" | "sales" | "transactions">("customers");
 
   // Filters
   const [fromDate, setFromDate] = useState(() => {
-    // Default to start of current fiscal year (2026-04-01) or 30 days ago
-    return "2026-04-01";
+    // Current Indian fiscal year (start Apr 1)
+    const now = new Date();
+    const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return `${startYear}-04-01`;
   });
   const [toDate, setToDate] = useState(() => {
     return new Date().toISOString().split("T")[0];
@@ -106,8 +111,10 @@ export default function CustomerPaymentReportPage() {
       setFromDate(firstDay);
       setToDate(todayStr);
     } else if (preset === "fy") {
-      setFromDate("2026-04-01");
-      setToDate("2027-03-31");
+      const now = new Date();
+      const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+      setFromDate(`${startYear}-04-01`);
+      setToDate(`${startYear + 1}-03-31`);
     } else if (preset === "all") {
       setFromDate("");
       setToDate("");
@@ -134,7 +141,6 @@ export default function CustomerPaymentReportPage() {
       const res = await fetch(`/api/bills?query=${encodeURIComponent(custName)}`);
       const bills = await res.json();
       if (Array.isArray(bills)) {
-        // Filter to unpaid or partial bills first, or show all
         setCustomerBills(bills);
       }
     } catch (err) {
@@ -234,16 +240,20 @@ export default function CustomerPaymentReportPage() {
 
   const payments = reportData?.payments || [];
   const customerSummaries = reportData?.customerSummaries || [];
+  const reportBills = reportData?.bills || [];
   const kpi = reportData?.kpi || {
     totalCollected: 0,
     totalBilled: 0,
     totalOutstanding: 0,
+    totalTransportCharges: 0,
+    totalLoadingCharges: 0,
     transactionCount: 0,
+    billsCount: 0,
   };
   const company = reportData?.company || {};
   const customersList = reportData?.customers || [];
 
-  // Filter payments by search query on client as well for fast search
+  // Filter payments by search query on client
   const filteredPayments = useMemo(() => {
     if (!searchQuery) return payments;
     const q = searchQuery.toLowerCase();
@@ -257,6 +267,31 @@ export default function CustomerPaymentReportPage() {
     );
   }, [payments, searchQuery]);
 
+  // Filter customer summaries by search query on client
+  const filteredCustomers = useMemo(() => {
+    if (!searchQuery) return customerSummaries;
+    const q = searchQuery.toLowerCase();
+    return customerSummaries.filter(
+      (c: any) =>
+        c.name?.toLowerCase().includes(q) ||
+        c.mobile?.toLowerCase().includes(q)
+    );
+  }, [customerSummaries, searchQuery]);
+
+  // Filter bills by search query on client
+  const filteredBills = useMemo(() => {
+    if (!searchQuery) return reportBills;
+    const q = searchQuery.toLowerCase();
+    return reportBills.filter(
+      (b: any) =>
+        b.customerName?.toLowerCase().includes(q) ||
+        b.invoiceNo?.toLowerCase().includes(q) ||
+        b.vehicleNo?.toLowerCase().includes(q) ||
+        b.transport?.toLowerCase().includes(q) ||
+        b.customerMobile?.toLowerCase().includes(q)
+    );
+  }, [reportBills, searchQuery]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 space-y-6 print:p-0 print:bg-white print:text-black">
       {/* Top Controls Header (Hidden in Print) */}
@@ -264,13 +299,13 @@ export default function CustomerPaymentReportPage() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold mb-2">
             <DollarSign className="w-3.5 h-3.5" />
-            <span>Customer Payments & Collection Audit</span>
+            <span>Customer Payments &amp; Collection Audit</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-            <span>Customer Payment Reports</span>
+            <span>Customer Sales &amp; Payment Reports</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Track partial payments (installments), customer receipts, outstanding balances, and export PDF statements.
+            Track customer sales, separate transport charges, partial payments received, and cumulative balance owed till date
           </p>
         </div>
 
@@ -323,7 +358,7 @@ export default function CustomerPaymentReportPage() {
             </p>
           </div>
           <div className="text-right border-l-2 border-black pl-4">
-            <h2 className="text-base font-extrabold uppercase text-black">Payment Collection Report</h2>
+            <h2 className="text-base font-extrabold uppercase text-black">Sales &amp; Customer Ledger Report</h2>
             <p className="text-xs font-mono">Date: {new Date().toLocaleDateString("en-IN")}</p>
             <p className="text-xs font-semibold">
               Period: {fromDate || "Beginning"} to {toDate || "Present"}
@@ -335,21 +370,77 @@ export default function CustomerPaymentReportPage() {
             )}
           </div>
         </div>
+
+        {/* Print Summary Strip */}
+        <div className="grid grid-cols-4 gap-2 border border-black p-2 mt-3 text-xs bg-gray-50">
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Total Invoiced:</span>
+            <span className="font-extrabold">₹{formatCurrency(kpi.totalBilled)}</span>
+          </div>
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Transport Charges:</span>
+            <span className="font-extrabold">₹{formatCurrency(kpi.totalTransportCharges)}</span>
+          </div>
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Total Collected:</span>
+            <span className="font-extrabold">₹{formatCurrency(kpi.totalCollected)}</span>
+          </div>
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Balance Outstanding:</span>
+            <span className="font-extrabold">₹{formatCurrency(kpi.totalOutstanding)}</span>
+          </div>
+        </div>
       </div>
 
-      {/* KPI Cards Strip (Hidden in Print) */}
+      {/* KPI Cards Strip (Hidden in Print) - 4 Rich Cards with Transport Charges Shown Separately */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 print:hidden">
-        {/* Total Collected */}
+        {/* Card 1: Total Invoiced Sales */}
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
           <div className="space-y-0.5 sm:space-y-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Total Received
+              Total Invoiced Sales
+            </span>
+            <div className="text-lg sm:text-2xl font-black text-white">
+              ₹{formatCurrency(kpi.totalBilled)}
+            </div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">
+              {kpi.billsCount || reportBills.length} Invoices Billed
+            </div>
+          </div>
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+        </div>
+
+        {/* Card 2: Transport Charges (Thaniya Show Ahanum) */}
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between">
+          <div className="space-y-0.5 sm:space-y-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+              Transport Charges
+            </span>
+            <div className="text-lg sm:text-2xl font-black text-amber-300">
+              ₹{formatCurrency(kpi.totalTransportCharges || 0)}
+            </div>
+            <div className="text-[9px] sm:text-[10px] text-amber-400/80 font-medium truncate">
+              Lorry Freight Separated
+            </div>
+          </div>
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+            <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+        </div>
+
+        {/* Card 3: Total Collected / Paid */}
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div className="space-y-0.5 sm:space-y-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Total Received (Paid)
             </span>
             <div className="text-lg sm:text-2xl font-black text-emerald-400">
               ₹{formatCurrency(kpi.totalCollected)}
             </div>
             <div className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold truncate">
-              {filteredPayments.length} Receipts
+              {filteredPayments.length} Payment Receipts
             </div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
@@ -357,49 +448,21 @@ export default function CustomerPaymentReportPage() {
           </div>
         </div>
 
-        {/* Total Billed */}
+        {/* Card 4: Total Outstanding Balance Due Till Date */}
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
           <div className="space-y-0.5 sm:space-y-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Invoiced Amount
-            </span>
-            <div className="text-lg sm:text-2xl font-black text-white">
-              ₹{formatCurrency(kpi.totalBilled)}
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">Billed sales</div>
-          </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-        </div>
-
-        {/* Total Outstanding Balance */}
-        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div className="space-y-0.5 sm:space-y-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Balance Due
+              Balance Due (Till Date)
             </span>
             <div className={`text-lg sm:text-2xl font-black ${kpi.totalOutstanding > 0 ? "text-red-400" : "text-emerald-400"}`}>
               ₹{formatCurrency(kpi.totalOutstanding)}
             </div>
-            <div className="text-[9px] sm:text-[10px] text-red-400 font-semibold truncate">Receivables</div>
+            <div className="text-[9px] sm:text-[10px] text-red-400 font-semibold truncate">
+              Receivables Outstanding
+            </div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
             <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-        </div>
-
-        {/* Customers with Balance */}
-        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div className="space-y-0.5 sm:space-y-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Active Accounts
-            </span>
-            <div className="text-lg sm:text-2xl font-black text-blue-400">{customerSummaries.length}</div>
-            <div className="text-[9px] sm:text-[10px] text-blue-400 font-semibold truncate">Ledgers</div>
-          </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -456,32 +519,30 @@ export default function CustomerPaymentReportPage() {
           </div>
         </div>
 
-        {/* Customer Select & Search */}
+        {/* Customer Selector & Search Query */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Customer Dropdown */}
-          <div className="relative min-w-[180px]">
-            <select
-              value={selectedCustomer}
-              onChange={(e) => setSelectedCustomer(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none uppercase font-semibold"
-            >
-              <option value="">All Customers</option>
-              {customersList.map((c: any) => (
-                <option key={c._id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={selectedCustomer}
+            onChange={(e) => setSelectedCustomer(e.target.value)}
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none uppercase font-semibold"
+          >
+            <option value="">All Customers</option>
+            {customersList.map((c: any) => (
+              <option key={c._id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
 
-          {/* Search Input */}
-          <div className="relative flex-1 sm:w-60">
+          {/* Search Box */}
+          <div className="relative flex-1 sm:w-56">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search invoice, receipt, customer..."
+              placeholder="Search customer, invoice, vehicle..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-7 py-2 text-xs text-white focus:border-amber-500 focus:outline-none transition-all"
             />
             {searchQuery && (
@@ -504,48 +565,493 @@ export default function CustomerPaymentReportPage() {
         </div>
       </div>
 
-      {/* Tabs Navigation (Hidden in Print) */}
+      {/* Tabs Navigation (Hidden in Print) - 3 Dedicated Sections */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-3 print:hidden overflow-x-auto touch-scroll">
         <button
-          onClick={() => setActiveTab("transactions")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 ${
-            activeTab === "transactions"
-              ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
-              : "text-slate-400 hover:text-white hover:bg-slate-900"
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Payment History Ledger ({filteredPayments.length})</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab("customers")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all shrink-0 ${
             activeTab === "customers"
               ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
               : "text-slate-400 hover:text-white hover:bg-slate-900"
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Customer Receivables Summary ({customerSummaries.length})</span>
+          <span>Customer Balances Till Date ({filteredCustomers.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("sales")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all shrink-0 ${
+            activeTab === "sales"
+              ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-900"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Sales Bills &amp; Due Audit ({filteredBills.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("transactions")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all shrink-0 ${
+            activeTab === "transactions"
+              ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-900"
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Payment Receipts History ({filteredPayments.length})</span>
         </button>
       </div>
 
-      {/* Tab 1: Payment Transactions Ledger (Installments list) */}
+      {/* TAB 1: CUSTOMER BALANCES TILL DATE (Full Customer-Wise Ledger & Due Tracker) */}
+      {activeTab === "customers" && (
+        <div className="glass-card rounded-3xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4 print:border-none print:shadow-none print:p-0">
+          <div className="flex justify-between items-center print:hidden">
+            <div>
+              <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-400" />
+                <span>Customer Ledger Accounts &amp; Outstanding Balances Till Date</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Track each client's total billed sales, transport charges, partial amounts paid, and remaining balance due till date
+              </p>
+            </div>
+            <div className="text-xs font-bold text-slate-400">
+              Showing <span className="text-amber-400">{filteredCustomers.length}</span> customer accounts
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-16 text-slate-400 font-medium">Loading customer accounts...</div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">No customer ledger records available.</div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse print:text-black">
+                  <thead>
+                    <tr className="border-b border-slate-800 print:border-black text-slate-400 print:text-black font-bold uppercase tracking-wider text-[11px] bg-slate-950/40 print:bg-gray-100">
+                      <th className="p-3 print:p-1.5">Customer Name &amp; Contact</th>
+                      <th className="p-3 print:p-1.5 text-center">Invoices</th>
+                      <th className="p-3 print:p-1.5 text-right text-amber-400 print:text-black">Transport Charges</th>
+                      <th className="p-3 print:p-1.5 text-right">Total Amount Billed</th>
+                      <th className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">Amount Paid</th>
+                      <th className="p-3 print:p-1.5 text-right font-black text-red-400 print:text-black">Balance Due (Till Date)</th>
+                      <th className="p-3 print:p-1.5 text-center">Status</th>
+                      <th className="p-3 print:p-1.5 text-right print:hidden">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50 print:divide-gray-300">
+                    {filteredCustomers.map((c: any, idx: number) => {
+                      const isFullyPaid = c.balanceDue <= 0;
+                      return (
+                        <tr key={idx} className="hover:bg-slate-800/40 print:hover:bg-transparent transition-colors">
+                          <td className="p-3 print:p-1.5">
+                            <div className="font-extrabold uppercase text-amber-400 print:text-black text-sm">
+                              {c.name}
+                            </div>
+                            {c.mobile && (
+                              <a
+                                href={`tel:${c.mobile}`}
+                                className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 print:text-black"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>{c.mobile}</span>
+                              </a>
+                            )}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-center font-bold text-slate-300 print:text-black">
+                            {c.billsCount}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-black text-amber-300 print:text-black">
+                            ₹{formatCurrency(c.totalTransportCharges || 0)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-bold text-white print:text-black">
+                            ₹{formatCurrency(c.totalBilled)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-bold text-emerald-400 print:text-black">
+                            ₹{formatCurrency(c.totalPaid)}
+                          </td>
+                          <td className={`p-3 print:p-1.5 text-right font-black text-sm ${isFullyPaid ? "text-emerald-400 print:text-black" : "text-red-400 print:text-black"}`}>
+                            ₹{formatCurrency(c.balanceDue)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                isFullyPaid
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                  : "bg-red-500/10 text-red-400 border-red-500/30"
+                              }`}
+                            >
+                              {isFullyPaid ? "🟢 CLEAR" : "🔴 PENDING"}
+                            </span>
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right space-x-2 print:hidden whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                handleCustomerChangeInModal(c.name);
+                                setShowPaymentModal(true);
+                              }}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition-all shadow-sm"
+                            >
+                              + Pay
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedCustomer(c.name);
+                                setActiveTab("sales");
+                              }}
+                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs transition-all"
+                            >
+                              Invoices
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-700 print:border-black font-extrabold bg-slate-900/60 print:bg-gray-100">
+                      <td className="p-3 print:p-1.5 uppercase text-slate-300 print:text-black">Grand Total:</td>
+                      <td className="p-3 print:p-1.5 text-center">
+                        {filteredCustomers.reduce((s: number, c: any) => s + (c.billsCount || 0), 0)}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right font-black text-amber-300 print:text-black">
+                        ₹{formatCurrency(filteredCustomers.reduce((s: number, c: any) => s + (c.totalTransportCharges || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right text-white print:text-black">
+                        ₹{formatCurrency(filteredCustomers.reduce((s: number, c: any) => s + (c.totalBilled || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">
+                        ₹{formatCurrency(filteredCustomers.reduce((s: number, c: any) => s + (c.totalPaid || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right text-red-400 print:text-black text-sm">
+                        ₹{formatCurrency(filteredCustomers.reduce((s: number, c: any) => s + (c.balanceDue || 0), 0))}
+                      </td>
+                      <td colSpan={2} className="print:hidden"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Mobile Card View for Customer Receivables */}
+              <div className="block sm:hidden space-y-3 print:hidden">
+                {filteredCustomers.map((c: any, idx: number) => {
+                  const isFullyPaid = c.balanceDue <= 0;
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 bg-slate-950/70 rounded-2xl border border-slate-800 space-y-3 shadow-md"
+                    >
+                      <div className="flex justify-between items-start border-b border-slate-800/80 pb-2">
+                        <div>
+                          <h3 className="font-black text-sm text-white uppercase">{c.name}</h3>
+                          {c.mobile && (
+                            <a
+                              href={`tel:${c.mobile}`}
+                              className="text-[11px] text-emerald-400 font-bold hover:underline flex items-center gap-1 mt-0.5"
+                            >
+                              <Phone className="w-2.5 h-2.5" />
+                              <span>{c.mobile}</span>
+                            </a>
+                          )}
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {c.billsCount} Invoices
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                            isFullyPaid
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                              : "bg-red-500/20 text-red-400 border-red-500/40"
+                          }`}
+                        >
+                          {isFullyPaid ? "🟢 CLEAR" : "🔴 PENDING"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-amber-400 uppercase font-bold block">Transport Charges:</span>
+                          <span className="font-bold text-amber-300">₹{formatCurrency(c.totalTransportCharges || 0)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Billed:</span>
+                          <span className="font-bold text-slate-200">₹{formatCurrency(c.totalBilled)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Amount Paid:</span>
+                          <span className="font-bold text-emerald-400">₹{formatCurrency(c.totalPaid)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-red-400 uppercase font-bold block">Balance Due:</span>
+                          <span className={`font-black ${isFullyPaid ? "text-emerald-400" : "text-red-400"}`}>
+                            ₹{formatCurrency(c.balanceDue)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
+                        <button
+                          onClick={() => {
+                            handleCustomerChangeInModal(c.name);
+                            setShowPaymentModal(true);
+                          }}
+                          className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <span>+ Record Payment</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: SALES BILLS & DUE AUDIT (Invoice-by-Invoice Detailed Tracker) */}
+      {activeTab === "sales" && (
+        <div className="glass-card rounded-3xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4 print:border-none print:shadow-none print:p-0">
+          <div className="flex justify-between items-center print:hidden">
+            <div>
+              <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-amber-400" />
+                <span>Sales Bills Audit: Transport Charges, Paid &amp; Due Till Date</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Detailed audit of every quarry sales bill with separated transport fees, partial payments, and customer balance till date
+              </p>
+            </div>
+            <div className="text-xs font-bold text-slate-400">
+              Showing <span className="text-amber-400">{filteredBills.length}</span> sales bills
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-16 text-slate-400 font-medium">Loading sales records...</div>
+          ) : filteredBills.length === 0 ? (
+            <div className="text-center py-16 text-slate-500 space-y-3">
+              <FileText className="w-10 h-10 mx-auto text-slate-600 opacity-50" />
+              <p className="text-sm font-semibold text-slate-400">No matching sales bills found.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse print:text-black">
+                  <thead>
+                    <tr className="border-b border-slate-800 print:border-black text-slate-400 print:text-black font-bold uppercase tracking-wider text-[11px] bg-slate-950/40 print:bg-gray-100">
+                      <th className="p-3 print:p-1.5">Invoice #</th>
+                      <th className="p-3 print:p-1.5">Date</th>
+                      <th className="p-3 print:p-1.5">Customer Details</th>
+                      <th className="p-3 print:p-1.5">Vehicle &amp; Transport</th>
+                      <th className="p-3 print:p-1.5 text-right text-amber-400 print:text-black">Transport Charges</th>
+                      <th className="p-3 print:p-1.5 text-right">Total Amount</th>
+                      <th className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">Paid (Partial)</th>
+                      <th className="p-3 print:p-1.5 text-right text-red-400 print:text-black">Bill Due</th>
+                      <th className="p-3 print:p-1.5 text-right font-black">Customer Due (Till Date)</th>
+                      <th className="p-3 print:p-1.5 text-center">Status</th>
+                      <th className="p-3 print:p-1.5 text-right print:hidden">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50 print:divide-gray-300">
+                    {filteredBills.map((b: any) => {
+                      const status = b.paymentStatus || "UNPAID";
+                      return (
+                        <tr key={b._id} className="hover:bg-slate-800/40 print:hover:bg-transparent transition-colors">
+                          <td className="p-3 print:p-1.5 font-extrabold text-amber-400 print:text-black whitespace-nowrap">
+                            <Link href={`/bills/${b._id}`} className="hover:underline flex items-center gap-1">
+                              <span>#{b.invoiceNo}</span>
+                              <ExternalLink className="w-2.5 h-2.5 print:hidden" />
+                            </Link>
+                          </td>
+                          <td className="p-3 print:p-1.5 text-slate-300 print:text-black whitespace-nowrap">
+                            {formatDate(b.date)}
+                          </td>
+                          <td className="p-3 print:p-1.5">
+                            <div className="font-extrabold uppercase text-white print:text-black">
+                              {b.customerName}
+                            </div>
+                            {b.customerMobile && (
+                              <div className="text-[10px] text-emerald-400 print:text-black font-semibold">
+                                📞 {b.customerMobile}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3 print:p-1.5">
+                            <div className="font-mono text-slate-200 print:text-black text-[11px] font-bold">
+                              {b.vehicleNo || "--"}
+                            </div>
+                            <div className="text-[10px] text-slate-400 print:text-gray-600 truncate max-w-[120px]">
+                              {b.transport || "Direct"}
+                            </div>
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-black text-amber-300 print:text-black whitespace-nowrap">
+                            ₹{formatCurrency(b.transportCharges)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-black text-white print:text-black whitespace-nowrap">
+                            ₹{formatCurrency(b.grandTotal)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-bold text-emerald-400 print:text-black whitespace-nowrap">
+                            ₹{formatCurrency(b.paidAmount)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right font-black text-red-400 print:text-black whitespace-nowrap">
+                            ₹{formatCurrency(b.balanceDue)}
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-lg text-[11px] font-black inline-block ${
+                                b.customerBalanceTillDate > 0
+                                  ? "bg-red-500/15 text-red-400 border border-red-500/30 print:text-black print:border-none"
+                                  : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 print:text-black print:border-none"
+                              }`}
+                            >
+                              ₹{formatCurrency(b.customerBalanceTillDate)}
+                            </span>
+                          </td>
+                          <td className="p-3 print:p-1.5 text-center whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                status === "PAID"
+                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 print:text-black"
+                                  : status === "PARTIAL"
+                                  ? "bg-amber-500/15 text-amber-400 border-amber-500/30 print:text-black"
+                                  : "bg-red-500/15 text-red-400 border-red-500/30 print:text-black"
+                              }`}
+                            >
+                              {status}
+                            </span>
+                          </td>
+                          <td className="p-3 print:p-1.5 text-right print:hidden space-x-1.5 whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                handleCustomerChangeInModal(b.customerName);
+                                handleBillSelect(b._id);
+                                setShowPaymentModal(true);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm"
+                            >
+                              + Pay
+                            </button>
+                            <Link
+                              href={`/bills/${b._id}/print`}
+                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs border border-slate-700 transition-all inline-block"
+                            >
+                              Print
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-700 print:border-black font-extrabold bg-slate-900/60 print:bg-gray-100">
+                      <td colSpan={4} className="p-3 print:p-1.5 uppercase text-slate-300 print:text-black text-right">
+                        Totals ({filteredBills.length} Bills):
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right font-black text-amber-300 print:text-black">
+                        ₹{formatCurrency(filteredBills.reduce((s: number, b: any) => s + (b.transportCharges || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right font-black text-white print:text-black">
+                        ₹{formatCurrency(filteredBills.reduce((s: number, b: any) => s + (b.grandTotal || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right font-black text-emerald-400 print:text-black">
+                        ₹{formatCurrency(filteredBills.reduce((s: number, b: any) => s + (b.paidAmount || 0), 0))}
+                      </td>
+                      <td className="p-3 print:p-1.5 text-right font-black text-red-400 print:text-black">
+                        ₹{formatCurrency(filteredBills.reduce((s: number, b: any) => s + (b.balanceDue || 0), 0))}
+                      </td>
+                      <td colSpan={3} className="print:hidden"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="block sm:hidden space-y-3 print:hidden">
+                {filteredBills.map((b: any) => (
+                  <div
+                    key={b._id}
+                    className="p-4 bg-slate-950/70 rounded-2xl border border-slate-800 space-y-2.5 shadow-md text-xs"
+                  >
+                    <div className="flex justify-between items-start border-b border-slate-800/80 pb-2">
+                      <div>
+                        <span className="font-mono text-xs font-black text-amber-400">#{b.invoiceNo}</span>
+                        <span className="text-[10px] text-slate-400 block">{formatDate(b.date)}</span>
+                      </div>
+                      <span className="vehicle-plate text-[10px]">{b.vehicleNo || "--"}</span>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold block">Customer:</span>
+                        <span className="font-black text-white uppercase">{b.customerName}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-amber-400 uppercase font-bold block">Transport:</span>
+                        <span className="font-bold text-amber-300">₹{formatCurrency(b.transportCharges)}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-[11px]">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block">Total:</span>
+                        <span className="font-bold text-white">₹{formatCurrency(b.grandTotal)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-emerald-400 block">Paid:</span>
+                        <span className="font-bold text-emerald-400">₹{formatCurrency(b.paidAmount)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-red-400 block">Due:</span>
+                        <span className="font-bold text-red-400">₹{formatCurrency(b.balanceDue)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-800/60">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block">Cust Due Till Date:</span>
+                        <span className="font-bold text-red-400">₹{formatCurrency(b.customerBalanceTillDate)}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          handleCustomerChangeInModal(b.customerName);
+                          handleBillSelect(b._id);
+                          setShowPaymentModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs"
+                      >
+                        + Pay
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: PAYMENT RECEIPTS HISTORY */}
       {activeTab === "transactions" && (
         <div className="glass-card rounded-3xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4 print:border-none print:shadow-none print:p-0">
           <div className="flex justify-between items-center print:hidden">
             <div>
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-amber-400" />
-                <span>Recorded Payment Receipts & Installments</span>
+                <span>Recorded Payment Receipts &amp; Installments</span>
               </h2>
               <p className="text-xs text-slate-400">
-                Detailed chronological record of every amount received from customers against bills
+                Detailed chronological record of every installment received from customers against bills
               </p>
             </div>
             <div className="text-xs font-bold text-slate-400">
-              Showing <span className="text-amber-400">{filteredPayments.length}</span> transactions
+              Showing <span className="text-amber-400">{filteredPayments.length}</span> receipts
             </div>
           </div>
 
@@ -693,187 +1199,6 @@ export default function CustomerPaymentReportPage() {
                     </div>
                   </div>
                 ))}
-
-                {/* Mobile Collected Summary */}
-                <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl flex justify-between items-center text-xs">
-                  <span className="font-bold text-emerald-300">Total Amount Collected:</span>
-                  <span className="font-black text-emerald-400 text-sm">
-                    ₹{formatCurrency(filteredPayments.reduce((s: number, p: any) => s + (p.amount || 0), 0))}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Tab 2: Customer Receivables Summary */}
-      {activeTab === "customers" && (
-        <div className="glass-card rounded-3xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4 print:border-none print:shadow-none print:p-0">
-          <div className="flex justify-between items-center print:hidden">
-            <div>
-              <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-amber-400" />
-                <span>Customer Ledger Accounts & Outstanding Balances</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Summary of total quarry sales, payments collected, and pending balances per customer
-              </p>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-16 text-slate-400 font-medium">Loading customer accounts...</div>
-          ) : customerSummaries.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">No customer ledger records available.</div>
-          ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse print:text-black">
-                  <thead>
-                    <tr className="border-b border-slate-800 print:border-black text-slate-400 print:text-black font-bold uppercase tracking-wider text-[11px] bg-slate-950/40 print:bg-gray-100">
-                      <th className="p-3 print:p-1.5">Customer Name</th>
-                      <th className="p-3 print:p-1.5 text-center">Invoices</th>
-                      <th className="p-3 print:p-1.5 text-right">Total Billed</th>
-                      <th className="p-3 print:p-1.5 text-right">Total Paid</th>
-                      <th className="p-3 print:p-1.5 text-right font-black">Balance Outstanding</th>
-                      <th className="p-3 print:p-1.5 text-center">Status</th>
-                      <th className="p-3 print:p-1.5 text-right print:hidden">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/50 print:divide-gray-300">
-                    {customerSummaries.map((c: any, idx: number) => {
-                      const isFullyPaid = c.balanceDue <= 0;
-                      return (
-                        <tr key={idx} className="hover:bg-slate-800/40 print:hover:bg-transparent transition-colors">
-                          <td className="p-3 print:p-1.5 font-extrabold uppercase text-amber-400 print:text-black text-sm">
-                            {c.name}
-                          </td>
-                          <td className="p-3 print:p-1.5 text-center font-bold text-slate-300 print:text-black">
-                            {c.billsCount}
-                          </td>
-                          <td className="p-3 print:p-1.5 text-right font-bold text-white print:text-black">
-                            ₹{formatCurrency(c.totalBilled)}
-                          </td>
-                          <td className="p-3 print:p-1.5 text-right font-bold text-emerald-400 print:text-black">
-                            ₹{formatCurrency(c.totalPaid)}
-                          </td>
-                          <td className={`p-3 print:p-1.5 text-right font-black text-sm ${isFullyPaid ? "text-emerald-400 print:text-black" : "text-red-400 print:text-black"}`}>
-                            ₹{formatCurrency(c.balanceDue)}
-                          </td>
-                          <td className="p-3 print:p-1.5 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                                isFullyPaid
-                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                  : "bg-red-500/10 text-red-400 border-red-500/30"
-                              }`}
-                            >
-                              {isFullyPaid ? "🟢 CLEAR" : "🔴 PENDING"}
-                            </span>
-                          </td>
-                          <td className="p-3 print:p-1.5 text-right space-x-2 print:hidden">
-                            <button
-                              onClick={() => {
-                                handleCustomerChangeInModal(c.name);
-                                setShowPaymentModal(true);
-                              }}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-all"
-                            >
-                              + Record Payment
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-slate-700 print:border-black font-extrabold bg-slate-900/60 print:bg-gray-100">
-                      <td className="p-3 print:p-1.5 uppercase text-slate-300 print:text-black">Grand Total</td>
-                      <td className="p-3 print:p-1.5 text-center">
-                        {customerSummaries.reduce((s: number, c: any) => s + (c.billsCount || 0), 0)}
-                      </td>
-                      <td className="p-3 print:p-1.5 text-right text-white print:text-black">
-                        ₹{formatCurrency(customerSummaries.reduce((s: number, c: any) => s + (c.totalBilled || 0), 0))}
-                      </td>
-                      <td className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">
-                        ₹{formatCurrency(customerSummaries.reduce((s: number, c: any) => s + (c.totalPaid || 0), 0))}
-                      </td>
-                      <td className="p-3 print:p-1.5 text-right text-red-400 print:text-black text-sm">
-                        ₹{formatCurrency(customerSummaries.reduce((s: number, c: any) => s + (c.balanceDue || 0), 0))}
-                      </td>
-                      <td colSpan={2} className="print:hidden"></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Mobile Card View for Customer Receivables */}
-              <div className="block sm:hidden space-y-3 print:hidden">
-                {customerSummaries.map((c: any, idx: number) => {
-                  const isFullyPaid = c.balanceDue <= 0;
-                  return (
-                    <div
-                      key={idx}
-                      className="p-4 bg-slate-950/70 rounded-2xl border border-slate-800 space-y-3 shadow-md"
-                    >
-                      <div className="flex justify-between items-start border-b border-slate-800/80 pb-2">
-                        <div>
-                          <h3 className="font-black text-sm text-white uppercase">{c.name}</h3>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {c.billsCount} Invoices
-                          </span>
-                        </div>
-                        <span
-                          className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
-                            isFullyPaid
-                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                              : "bg-red-500/20 text-red-400 border-red-500/40"
-                          }`}
-                        >
-                          {isFullyPaid ? "🟢 CLEAR" : "🔴 PENDING"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Billed:</span>
-                          <span className="font-bold text-slate-200">₹{formatCurrency(c.totalBilled)}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Amount Paid:</span>
-                          <span className="font-bold text-emerald-400">₹{formatCurrency(c.totalPaid)}</span>
-                        </div>
-                      </div>
-
-                      {/* Balance Due Box */}
-                      <div className="flex justify-between items-center bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-                        <span className="text-xs text-slate-400 font-bold">Balance Due:</span>
-                        <span
-                          className={`text-base font-black ${
-                            isFullyPaid ? "text-emerald-400" : "text-red-400"
-                          }`}
-                        >
-                          ₹{formatCurrency(c.balanceDue)}
-                        </span>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
-                        <button
-                          onClick={() => {
-                            handleCustomerChangeInModal(c.name);
-                            setShowPaymentModal(true);
-                          }}
-                          className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <span>+ Record Payment</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </>
           )}
@@ -885,6 +1210,8 @@ export default function CustomerPaymentReportPage() {
         <div className="border-t-2 border-black pt-4 flex justify-between items-end text-xs">
           <div>
             <p className="font-bold">Summary Status:</p>
+            <p>Total Sales Invoiced: ₹{formatCurrency(kpi.totalBilled)}</p>
+            <p>Total Transport Charges: ₹{formatCurrency(kpi.totalTransportCharges)}</p>
             <p>Total Payments Collected: ₹{formatCurrency(kpi.totalCollected)}</p>
             <p>Total Outstanding Balance: ₹{formatCurrency(kpi.totalOutstanding)}</p>
             <p className="mt-2 text-[10px] text-gray-500">Generated automatically by QuarryBilling System</p>
@@ -898,7 +1225,7 @@ export default function CustomerPaymentReportPage() {
 
       {/* Record Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-slate-400/35 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="glass-card rounded-3xl p-6 max-w-lg w-full border border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
@@ -907,7 +1234,7 @@ export default function CustomerPaymentReportPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">Record Customer Payment</h3>
-                  <p className="text-xs text-slate-400">Log full or installment payment towards bill or account</p>
+                  <p className="text-xs text-slate-400">Log full or partial installment payment towards bill or account</p>
                 </div>
               </div>
               <button
@@ -1041,7 +1368,7 @@ export default function CustomerPaymentReportPage() {
                   type="text"
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                  placeholder="e.g. Part payment 1st installment, balance 90k pending"
+                  placeholder="e.g. Part payment 1st installment, balance pending"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
                 />
               </div>
