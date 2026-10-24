@@ -2,6 +2,7 @@
 
 import React from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { TradeMargin } from "@/lib/sourcing";
 
 export interface PurchaseData {
   _id?: string;
@@ -44,6 +45,15 @@ export interface PurchaseData {
   paymentDate?: string;
   notes?: string;
   createdAt?: string | Date;
+  // Installments paid to the vendor
+  payments?: { _id: string; amount: number; date: string; mode: string; ref?: string; notes?: string }[];
+  // Sales made from this load (back-to-back trading); present on the purchase page
+  saleStatus?: string;
+  soldQty?: number;
+  remainingQty?: number;
+  soldValue?: number;
+  trade?: Omit<TradeMargin, "sales">;
+  sales?: TradeMargin["sales"];
 }
 
 export default function PurchasePrintView({

@@ -4,10 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mountain, Lock, Mail, ArrowRight, CheckCircle2, ShieldAlert } from "lucide-react";
 
+// Demo login hints and the sample-data button are for local use only, never on the live site
+const DEMO = process.env.NODE_ENV !== "production";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@quarry.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState(DEMO ? "admin@quarry.com" : "");
+  const [password, setPassword] = useState(DEMO ? "admin123" : "");
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState("");
@@ -101,7 +104,7 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-slate-300">
                   Email Address
                 </label>
-                <span className="text-[10px] text-amber-400/80 font-medium">admin@quarry.com</span>
+                {DEMO && <span className="text-[10px] text-amber-400/80 font-medium">admin@quarry.com</span>}
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -113,7 +116,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-3 text-base sm:text-sm text-white focus:border-amber-500 focus:outline-none transition-all font-medium"
-                  placeholder="admin@quarry.com"
+                  placeholder={DEMO ? "admin@quarry.com" : "you@example.com"}
                 />
               </div>
             </div>
@@ -123,7 +126,7 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-slate-300">
                   Password
                 </label>
-                <span className="text-[10px] text-amber-400/80 font-medium">admin123</span>
+                {DEMO && <span className="text-[10px] text-amber-400/80 font-medium">admin123</span>}
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -150,6 +153,7 @@ export default function LoginPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
 
+            {DEMO && (
             <button
               type="button"
               onClick={() => {
@@ -160,9 +164,11 @@ export default function LoginPage() {
             >
               <span>🔑 Auto-Fill Demo Credentials</span>
             </button>
+            )}
           </form>
 
-          {/* Quick Seed Button */}
+          {/* Quick Seed Button (local only) */}
+          {DEMO && (
           <div className="pt-4 border-t border-slate-800/80 text-center space-y-2">
             <p className="text-[11px] text-slate-400">First time setting up local database?</p>
             <button
@@ -174,11 +180,14 @@ export default function LoginPage() {
               {seeding ? "Seeding..." : "⚡ Seed Admin Credentials & Sample Invoice"}
             </button>
           </div>
+          )}
         </div>
 
-        <div className="text-center text-xs text-slate-500 font-medium">
-          Demo: <span className="text-amber-400 font-bold">admin@quarry.com</span> • <span className="text-amber-400 font-bold">admin123</span>
-        </div>
+        {DEMO && (
+          <div className="text-center text-xs text-slate-500 font-medium">
+            Demo: <span className="text-amber-400 font-bold">admin@quarry.com</span> • <span className="text-amber-400 font-bold">admin123</span>
+          </div>
+        )}
       </div>
     </div>
   );

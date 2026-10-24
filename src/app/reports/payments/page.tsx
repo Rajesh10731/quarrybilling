@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  DollarSign,
+  IndianRupee,
   Calendar,
   Search,
   Printer,
@@ -298,7 +298,7 @@ export default function CustomerPaymentReportPage() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 print:hidden">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold mb-2">
-            <DollarSign className="w-3.5 h-3.5" />
+            <IndianRupee className="w-3.5 h-3.5" />
             <span>Customer Payments &amp; Collection Audit</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
@@ -444,7 +444,7 @@ export default function CustomerPaymentReportPage() {
             </div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
-            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+            <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
@@ -690,11 +690,12 @@ export default function CustomerPaymentReportPage() {
                           </td>
                           <td className="p-3 print:p-1.5 text-right space-x-2 print:hidden whitespace-nowrap">
                             <button
+                              disabled={isFullyPaid}
                               onClick={() => {
                                 handleCustomerChangeInModal(c.name);
                                 setShowPaymentModal(true);
                               }}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition-all shadow-sm"
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                             >
                               + Pay
                             </button>
@@ -796,11 +797,12 @@ export default function CustomerPaymentReportPage() {
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
                         <button
+                          disabled={isFullyPaid}
                           onClick={() => {
                             handleCustomerChangeInModal(c.name);
                             setShowPaymentModal(true);
                           }}
-                          className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                          className="disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                         >
                           <span>+ Record Payment</span>
                         </button>
@@ -852,9 +854,8 @@ export default function CustomerPaymentReportPage() {
                       <th className="p-3 print:p-1.5">Vehicle &amp; Transport</th>
                       <th className="p-3 print:p-1.5 text-right text-amber-400 print:text-black">Transport Charges</th>
                       <th className="p-3 print:p-1.5 text-right">Total Amount</th>
-                      <th className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">Paid (Partial)</th>
+                      <th className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">Paid</th>
                       <th className="p-3 print:p-1.5 text-right text-red-400 print:text-black">Bill Due</th>
-                      <th className="p-3 print:p-1.5 text-right font-black">Customer Due (Till Date)</th>
                       <th className="p-3 print:p-1.5 text-center">Status</th>
                       <th className="p-3 print:p-1.5 text-right print:hidden">Actions</th>
                     </tr>
@@ -903,17 +904,6 @@ export default function CustomerPaymentReportPage() {
                           <td className="p-3 print:p-1.5 text-right font-black text-red-400 print:text-black whitespace-nowrap">
                             ₹{formatCurrency(b.balanceDue)}
                           </td>
-                          <td className="p-3 print:p-1.5 text-right whitespace-nowrap">
-                            <span
-                              className={`px-2 py-0.5 rounded-lg text-[11px] font-black inline-block ${
-                                b.customerBalanceTillDate > 0
-                                  ? "bg-red-500/15 text-red-400 border border-red-500/30 print:text-black print:border-none"
-                                  : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 print:text-black print:border-none"
-                              }`}
-                            >
-                              ₹{formatCurrency(b.customerBalanceTillDate)}
-                            </span>
-                          </td>
                           <td className="p-3 print:p-1.5 text-center whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
@@ -929,12 +919,13 @@ export default function CustomerPaymentReportPage() {
                           </td>
                           <td className="p-3 print:p-1.5 text-right print:hidden space-x-1.5 whitespace-nowrap">
                             <button
+                              disabled={(b.balanceDue || 0) <= 0}
                               onClick={() => {
                                 handleCustomerChangeInModal(b.customerName);
                                 handleBillSelect(b._id);
                                 setShowPaymentModal(true);
                               }}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                             >
                               + Pay
                             </button>
@@ -1013,18 +1004,15 @@ export default function CustomerPaymentReportPage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-800/60">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block">Cust Due Till Date:</span>
-                        <span className="font-bold text-red-400">₹{formatCurrency(b.customerBalanceTillDate)}</span>
-                      </div>
+                    <div className="flex justify-end items-center pt-1 border-t border-slate-800/60">
                       <button
+                        disabled={(b.balanceDue || 0) <= 0}
                         onClick={() => {
                           handleCustomerChangeInModal(b.customerName);
                           handleBillSelect(b._id);
                           setShowPaymentModal(true);
                         }}
-                        className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs"
+                        className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                       >
                         + Pay
                       </button>
@@ -1060,7 +1048,7 @@ export default function CustomerPaymentReportPage() {
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-16 text-slate-500 space-y-3">
               <div className="w-14 h-14 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-600">
-                <DollarSign className="w-7 h-7" />
+                <IndianRupee className="w-7 h-7" />
               </div>
               <p className="text-sm font-semibold text-slate-400">No payment receipts found in this period.</p>
               <p className="text-xs text-slate-500">Click &quot;Record Payment&quot; above to log an installment.</p>

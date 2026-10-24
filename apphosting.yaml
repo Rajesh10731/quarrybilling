@@ -1,0 +1,31 @@
+# Firebase App Hosting settings (https://firebase.google.com/docs/app-hosting/configure)
+# Secret values live in Google Cloud Secret Manager, never in this file. Create them with:
+#   firebase apphosting:secrets:set mongodbUri
+#   firebase apphosting:secrets:set jwtSecret
+#   firebase apphosting:secrets:set adminEmail
+#   firebase apphosting:secrets:set adminPassword
+
+runConfig:
+  minInstances: 0 # no cost while nobody is using the app
+  maxInstances: 2
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: MONGODB_URI
+    secret: mongodbUri
+  - variable: JWT_SECRET
+    secret: jwtSecret
+  # First admin account, created once by opening /api/seed on the live site
+  - variable: ADMIN_EMAIL
+    secret: adminEmail
+    availability:
+      - RUNTIME
+  - variable: ADMIN_PASSWORD
+    secret: adminPassword
+    availability:
+      - RUNTIME
+  - variable: ADMIN_NAME
+    value: Admin
+    availability:
+      - RUNTIME

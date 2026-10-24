@@ -9,7 +9,7 @@ import {
   ArrowLeft,
   Eye,
   CheckCircle2,
-  DollarSign,
+  IndianRupee,
   Calendar,
   X,
   Truck,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import PurchasePrintView, { PurchaseData } from "@/components/PurchasePrintView";
 import PurchaseForm from "@/components/PurchaseForm";
+import SaleStatusBadge from "@/components/SaleStatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function PurchaseDetailPage() {
@@ -138,6 +139,7 @@ export default function PurchaseDetailPage() {
   }
 
   const pendingAmount = Math.max(0, (purchase.grandTotal || 0) - (purchase.paidAmount || 0));
+  const trade = purchase.trade;
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
@@ -204,9 +206,11 @@ export default function PurchaseDetailPage() {
 
           <button
             onClick={() => setShowPaymentModal(true)}
-            className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all"
+            disabled={pendingAmount <= 0}
+            title={pendingAmount <= 0 ? "Fully paid, nothing pending" : "Record a payment to the vendor"}
+            className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
-            <DollarSign className="w-4 h-4" />
+            <IndianRupee className="w-4 h-4" />
             <span className="hidden sm:inline">Record Payment</span>
             <span className="sm:hidden">Pay</span>
           </button>
@@ -245,7 +249,7 @@ export default function PurchaseDetailPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
               <div>
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-amber-400" />
+                  <IndianRupee className="w-5 h-5 text-amber-400" />
                   <span>Settlement Status with {purchase.vendorName}</span>
                 </h2>
                 <p className="text-xs text-slate-400">
@@ -305,6 +309,71 @@ export default function PurchaseDetailPage() {
               </div>
             </div>
 
+            {/* Trade margin: sales from this load (bought and sold on directly, no stock) */}
+            <div className="pt-4 mt-4 border-t border-slate-800 space-y-3">
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Trade Margin</h3>
+                <SaleStatusBadge status={purchase.saleStatus} soldQty={purchase.soldQty} qty={purchase.qty} unit={purchase.unit} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                {[
+                  ["Bought", `${purchase.qty} ${purchase.unit}`, "text-slate-200"],
+                  ["Sold", `${purchase.soldQty || 0} ${purchase.unit}`, "text-emerald-400"],
+                  ["Left to sell", `${purchase.remainingQty ?? purchase.qty} ${purchase.unit}`, "text-amber-400"],
+                  ["Income", `₹${formatCurrency(trade?.income || 0)}`, "text-slate-200"],
+                  ["Cost", `₹${formatCurrency(trade?.cost || 0)}`, "text-slate-200"],
+                  [
+                    (trade?.profit || 0) < 0 ? "Loss" : "Margin",
+                    `${(trade?.profit || 0) < 0 ? "−" : ""}₹${formatCurrency(Math.abs(trade?.profit || 0))}${trade?.income ? ` (${trade.marginPct}%)` : ""}`,
+                    (trade?.profit || 0) < 0 ? "text-red-400" : "text-emerald-400",
+                  ],
+                ].map(([label, value, color]) => (
+                  <div key={label} className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2">
+                    <span className="block text-[10px] text-slate-500 uppercase font-bold">{label}</span>
+                    <span className={`block font-black ${color}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              {(purchase.sales || []).length === 0 ? (
+                <p className="text-xs text-slate-500 italic">Not sold yet. Use “Sell from Purchase” on a new sales bill.</p>
+              ) : (
+                <div className="overflow-x-auto touch-scroll">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="text-slate-500 uppercase text-[10px] border-b border-slate-800">
+                        <th className="py-2 pr-3">Invoice</th>
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Customer</th>
+                        <th className="py-2 pr-3 text-right">Qty</th>
+                        <th className="py-2 pr-3 text-right">Rate</th>
+                        <th className="py-2 pr-3 text-right">Income</th>
+                        <th className="py-2 pr-3 text-right">Cost</th>
+                        <th className="py-2 text-right">Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {(purchase.sales || []).map((s, i) => (
+                        <tr key={`${s.billId}-${i}`}>
+                          <td className="py-2 pr-3">
+                            <Link href={`/bills/${s.billId}`} className="font-bold text-amber-400 hover:underline">{s.invoiceNo}</Link>
+                          </td>
+                          <td className="py-2 pr-3 text-slate-300">{formatDate(s.date)}</td>
+                          <td className="py-2 pr-3 text-slate-200 uppercase">{s.customer}</td>
+                          <td className="py-2 pr-3 text-right text-slate-300">{s.qty} {s.unit}</td>
+                          <td className="py-2 pr-3 text-right text-slate-300">₹{formatCurrency(s.rate)}</td>
+                          <td className="py-2 pr-3 text-right text-slate-200">₹{formatCurrency(s.income)}</td>
+                          <td className="py-2 pr-3 text-right text-slate-300">₹{formatCurrency(s.cost)}</td>
+                          <td className={`py-2 text-right font-bold ${s.profit < 0 ? "text-red-400" : "text-emerald-400"}`}>
+                            {s.profit < 0 ? "−" : ""}₹{formatCurrency(Math.abs(s.profit))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Payment history: every installment paid to the vendor */}
             <div className="pt-4 mt-4 border-t border-slate-800">
               <div className="flex justify-between items-center mb-2">
@@ -318,7 +387,7 @@ export default function PurchaseDetailPage() {
                   </button>
                 )}
               </div>
-              {((purchase as any).payments || []).length === 0 ? (
+              {(purchase.payments || []).length === 0 ? (
                 <p className="text-xs text-slate-500 italic">No payments recorded yet.</p>
               ) : (
                 <div className="overflow-x-auto touch-scroll">
@@ -334,7 +403,7 @@ export default function PurchaseDetailPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
-                      {((purchase as any).payments as any[]).map((p) => (
+                      {(purchase.payments as any[]).map((p) => (
                         <tr key={p._id}>
                           <td className="py-2 pr-3 text-slate-300">{formatDate(p.date)}</td>
                           <td className="py-2 pr-3 text-slate-300">{p.mode}</td>
@@ -366,7 +435,7 @@ export default function PurchaseDetailPage() {
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in duration-200">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-white font-black text-lg">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <IndianRupee className="w-5 h-5 text-emerald-400" />
                 <span>Record Vendor Payment</span>
               </div>
               <button

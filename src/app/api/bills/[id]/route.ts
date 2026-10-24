@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db";
 import { Bill } from "@/models/Bill";
 import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
+import { validateBillSourcing } from "@/lib/sourcing";
 import {
   BILL_HEADER_FIELDS,
   applyBillTotals,
@@ -67,6 +68,7 @@ export async function PUT(
 
     if (body.date) body.date = toISODate(body.date);
     applyBillTotals(body);
+    await validateBillSourcing(body.items, id);
     if (body.invoiceNo !== undefined) {
       body.invoiceNo = String(body.invoiceNo).trim();
       if (!body.invoiceNo) {

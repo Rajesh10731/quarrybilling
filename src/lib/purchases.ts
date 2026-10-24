@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Purchase, IPurchase } from "@/models/Purchase";
 import { numberToWords } from "@/lib/utils";
-import { LedgerError, exactName, incrementDocNumber, round2, statusFor, toISODate, todayISO, upsertVendor } from "@/lib/ledger";
+import { LedgerError, exactName, nextMonthlyDocNo, round2, statusFor, toISODate, todayISO, upsertVendor } from "@/lib/ledger";
 
 const TAX_PERCENT: Record<string, number> = { "5%": 5, "12%": 12, "18%": 18 };
 
@@ -35,14 +35,9 @@ export async function assertUniqueInwardNo(inwardNo: string, excludeId?: string)
   if (dup) throw new LedgerError(`Inward slip number "${inwardNo.trim()}" is already used`, 409);
 }
 
-/** Suggest the next free inward slip number, e.g. PUR-2026-0001, PUR-2026-0002. */
-export async function suggestNextInwardNo() {
-  const last = await Purchase.findOne().sort({ createdAt: -1 }).select("inwardNo").lean();
-  let candidate = last?.inwardNo ? incrementDocNumber(last.inwardNo) : `PUR-${new Date().getFullYear()}-0001`;
-  for (let i = 0; i < 50 && (await Purchase.exists({ inwardNo: exactName(candidate) })); i++) {
-    candidate = incrementDocNumber(candidate);
-  }
-  return candidate;
+/** Suggest the next free inward slip number for a purchase dated `date`, e.g. PUR-2026-01-001. */
+export async function suggestNextInwardNo(date?: string) {
+  return nextMonthlyDocNo(Purchase, "inwardNo", "PUR", date);
 }
 
 /** Recompute paidAmount / status / latest payment info from the payment history. */

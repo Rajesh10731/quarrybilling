@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft, Copy, UserCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -9,6 +9,20 @@ import BillPrintView, { BillData } from "./BillPrintView";
 import { StepFooter, StepIndicator } from "./FormSteps";
 import MaterialSelect from "./MaterialSelect";
 import { computeBillTotals, type DiscountType } from "@/lib/billTotals";
+
+/** A purchase load that still has quantity left to sell */
+interface PurchaseOption {
+  _id: string;
+  inwardNo: string;
+  material: string;
+  hsnSac?: string;
+  qty: number;
+  unit: string;
+  remainingQty: number;
+  vendorName: string;
+  vehicleNo?: string;
+  transportName?: string;
+}
 
 const BILL_STEPS = [
   { title: "Goods & Amount", subtitle: "Materials, charges, tax & payment" },
@@ -40,7 +54,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
 
   // Form state with extra fields (deliveryPlace, loadingCharges, lorryFreight)
   const [formData, setFormData] = useState<BillData & { deliveryPlace?: string; loadingCharges?: number; lorryFreight?: number }>({
-    invoiceNo: initialBill?.invoiceNo || `1/${new Date().getFullYear()}`,
+    invoiceNo: initialBill?.invoiceNo || "",
     date: initialBill?.date || new Date().toISOString().split("T")[0],
     placeOfSupply: initialBill?.placeOfSupply || "",
     reverseCharge: initialBill?.reverseCharge || "N",
@@ -97,6 +111,17 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
     paidAmount: (initialBill as any)?.paidAmount || 0,
   });
 
+  // Purchase loads that still have quantity left to sell (back-to-back trading: no stock is kept)
+  const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([]);
+  const [pickPurchaseId, setPickPurchaseId] = useState("");
+  useEffect(() => {
+    const billParam = isEditing && initialBill?._id ? `&billId=${initialBill._id}` : "";
+    fetch(`/api/purchases?forSale=1${billParam}`)
+      .then((res) => res.json())
+      .then((data) => Array.isArray(data) && setPurchaseOptions(data))
+      .catch((err) => console.error(err));
+  }, [isEditing, initialBill?._id]);
+
   // Fetch Customers for auto-complete dropdown
   useEffect(() => {
     fetch("/api/customers")
@@ -107,16 +132,27 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
       .catch((err) => console.error(err));
   }, []);
 
-  // Suggest the next free invoice number for a new bill
+  // Suggest the next free invoice number (INV-YYYY-MM-NNN) for the bill's month.
+  // Follows the date until the user types their own number.
+  const autoInvoiceNo = useRef("");
   useEffect(() => {
     if (isEditing || initialBill?.invoiceNo) return;
-    fetch("/api/bills?nextInvoiceNo=1")
+    let stale = false;
+    fetch(`/api/bills?nextInvoiceNo=1&date=${encodeURIComponent(formData.date || "")}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data?.invoiceNo) setFormData((prev) => ({ ...prev, invoiceNo: data.invoiceNo }));
+        if (stale || !data?.invoiceNo) return;
+        const lastSuggested = autoInvoiceNo.current;
+        autoInvoiceNo.current = data.invoiceNo;
+        setFormData((prev) =>
+          prev.invoiceNo && prev.invoiceNo !== lastSuggested ? prev : { ...prev, invoiceNo: data.invoiceNo }
+        );
       })
       .catch((err) => console.error(err));
-  }, [isEditing, initialBill?.invoiceNo]);
+    return () => {
+      stale = true;
+    };
+  }, [isEditing, initialBill?.invoiceNo, formData.date]);
 
   // Fetch Saved Settings if creating a new bill
   useEffect(() => {
@@ -233,6 +269,47 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
     }
   };
 
+  /** Quantity of a purchase still free for one item row (excluding other rows of this bill that use it). */
+  const availableFor = (purchaseId: string | undefined, rowIndex: number) => {
+    const option = purchaseOptions.find((p) => p._id === purchaseId);
+    if (!option) return 0;
+    const usedElsewhere = formData.items.reduce(
+      (sum, it, i) => (i !== rowIndex && it.purchaseId === purchaseId ? sum + (Number(it.qty) || 0) : sum),
+      0
+    );
+    return Math.max(0, Math.round((option.remainingQty - usedElsewhere) * 100) / 100);
+  };
+
+  /** Add a material line sold from a purchase load, with the quantity still left on it. */
+  const addFromPurchase = (purchaseId: string) => {
+    const p = purchaseOptions.find((x) => x._id === purchaseId);
+    if (!p) return;
+    const left = availableFor(p._id, -1);
+    if (left <= 0) {
+      setError(`Purchase ${p.inwardNo} is already fully used on this bill.`);
+      return;
+    }
+    setError("");
+    const line = { sn: 0, description: p.material, hsnSac: p.hsnSac || "", qty: left, unit: p.unit || "Tonne", price: 0, amount: 0, purchaseId: p._id, inwardNo: p.inwardNo };
+    setFormData((prev) => {
+      const onlyEmptyRow = prev.items.length === 1 && !prev.items[0].description && !Number(prev.items[0].qty) && !Number(prev.items[0].price);
+      return {
+        ...prev,
+        items: onlyEmptyRow ? [line] : [...prev.items, line],
+        // The same lorry delivers the load to the customer
+        vehicleNo: prev.vehicleNo || p.vehicleNo || "",
+        transport: prev.transport || p.transportName || "",
+      };
+    });
+    setPickPurchaseId("");
+  };
+
+  const unlinkPurchase = (index: number) =>
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.map((it, i) => (i === index ? { ...it, purchaseId: undefined, inwardNo: undefined } : it)),
+    }));
+
   // ---- Step-by-step flow ----
   const [step, setStep] = useState(0);
   // When editing, every step already has data, so all steps can be opened directly
@@ -253,6 +330,14 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         if (!String(it.description || "").trim()) return `Material ${i + 1}: choose or type the material.`;
         if (!(Number(it.qty) > 0)) return `Material ${i + 1} (${it.description}): enter a quantity greater than 0.`;
         if (!(Number(it.price) > 0)) return `Material ${i + 1} (${it.description}): enter the rate.`;
+      }
+      for (let i = 0; i < formData.items.length; i++) {
+        const it = formData.items[i];
+        if (!it.purchaseId) continue;
+        const left = availableFor(it.purchaseId, i);
+        if ((Number(it.qty) || 0) > left + 0.005) {
+          return `${it.description}: purchase ${it.inwardNo} has only ${left} ${it.unit} left to sell.`;
+        }
       }
       const discountProblem = computeBillTotals(formData).error;
       if (discountProblem) return discountProblem;
@@ -389,7 +474,7 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
               value={formData.invoiceNo}
               onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-amber-400 font-bold focus:border-amber-500 focus:outline-none"
-              placeholder="e.g. 11439"
+              placeholder="INV-2026-01-001"
             />
           </div>
           <div>
@@ -410,6 +495,37 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
         {/* STEP 1: Goods & Amount */}
         {step === 0 && (
           <>
+            {/* Sell directly from a purchase load (no stock is kept) */}
+            <div className="glass-card rounded-3xl p-4 sm:p-5 border border-blue-500/30 shadow-xl space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <label htmlFor="sell-from-purchase" className="text-sm font-extrabold text-blue-400 whitespace-nowrap">
+                  Sell from Purchase
+                </label>
+                <select
+                  id="sell-from-purchase"
+                  value={pickPurchaseId}
+                  onChange={(e) => {
+                    setPickPurchaseId(e.target.value);
+                    if (e.target.value) addFromPurchase(e.target.value);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                >
+                  <option value="">
+                    {purchaseOptions.length ? "Pick a purchase load (Inward No.) to sell…" : "No purchase loads with quantity left"}
+                  </option>
+                  {purchaseOptions.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.inwardNo} · {p.material} · {p.remainingQty} {p.unit} left · {p.vendorName}
+                      {p.vehicleNo ? ` · ${p.vehicleNo}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Adds the material with the quantity still left on that load. A load can be split across bills but never sold for more than was bought.
+              </p>
+            </div>
+
             {/* 3. Items & Material Details */}
             <div className="glass-card rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
@@ -453,6 +569,17 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                             onChange={(v) => handleItemChange(index, "description", v)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white font-semibold focus:border-amber-500 focus:outline-none"
                           />
+                          {item.purchaseId && (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold" title="Sold from this purchase load">
+                                From {item.inwardNo}
+                              </span>
+                              <span className="text-slate-400">{availableFor(item.purchaseId, index)} {item.unit} left</span>
+                              <button type="button" onClick={() => unlinkPurchase(index)} className="text-slate-400 hover:text-red-400 underline px-1">
+                                Unlink
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="p-2">
                           <input
@@ -478,8 +605,10 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                         <td className="p-2">
                           <select
                             value={item.unit}
+                            disabled={!!item.purchaseId}
+                            title={item.purchaseId ? "Unit follows the purchase load" : undefined}
                             onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-white focus:border-amber-500 focus:outline-none disabled:opacity-60"
                           >
                             {UNITS.map((u) => (
                               <option key={u} value={u}>
@@ -555,6 +684,17 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                         onChange={(v) => handleItemChange(index, "description", v)}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:border-amber-500 focus:outline-none"
                       />
+                      {item.purchaseId && (
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold" title="Sold from this purchase load">
+                                From {item.inwardNo}
+                              </span>
+                              <span className="text-slate-400">{availableFor(item.purchaseId, index)} {item.unit} left</span>
+                              <button type="button" onClick={() => unlinkPurchase(index)} className="text-slate-400 hover:text-red-400 underline px-1">
+                                Unlink
+                              </button>
+                            </div>
+                          )}
                     </div>
 
                     {/* Qty & Unit */}
@@ -581,8 +721,10 @@ export default function BillForm({ initialBill, isEditing = false }: BillFormPro
                         </label>
                         <select
                           value={item.unit}
+                          disabled={!!item.purchaseId}
+                          title={item.purchaseId ? "Unit follows the purchase load" : undefined}
                           onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:border-amber-500 focus:outline-none"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:border-amber-500 focus:outline-none disabled:opacity-60"
                         >
                           {UNITS.map((u) => (
                             <option key={u} value={u}>

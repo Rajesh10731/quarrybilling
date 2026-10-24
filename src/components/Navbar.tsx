@@ -14,6 +14,7 @@ import {
   X,
   Mountain,
   CreditCard,
+  TrendingUp,
   Truck,
   Building2,
   Plus,
@@ -84,6 +85,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
         { name: "Customers", subtitle: "Client Directory & Statements", href: "/customers", icon: Users },
         { name: "Vendors", subtitle: "Raw Material Suppliers", href: "/vendors", icon: Building2 },
         { name: "Payment Reports", subtitle: "Receivables & Ledgers", href: "/reports/payments", icon: CreditCard },
+        { name: "Trade Margin", subtitle: "Margin on each load sold", href: "/reports/trade-margin", icon: TrendingUp },
       ],
     },
     {
@@ -240,7 +242,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
                       {user?.name || "Administrator"}
                     </div>
                     <div className="text-[11px] text-slate-400 truncate">
-                      {user?.email || "admin@quarry.com"}
+                      {user?.email || ""}
                     </div>
                   </div>
                 </div>

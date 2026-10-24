@@ -8,6 +8,9 @@ export interface IBillItem {
   unit: string;
   price: number;
   amount: number;
+  /** Purchase (inward load) this quantity was bought on, when the material is sold on directly */
+  purchaseId?: mongoose.Types.ObjectId;
+  inwardNo?: string;
 }
 
 export interface IBillParty {
@@ -77,6 +80,8 @@ const BillItemSchema = new Schema<IBillItem>({
   unit: { type: String, default: "Tonne" },
   price: { type: Number, required: true },
   amount: { type: Number, required: true },
+  purchaseId: { type: Schema.Types.ObjectId, ref: "Purchase" },
+  inwardNo: { type: String, default: "" },
 });
 
 const BillPartySchema = new Schema<IBillParty>({

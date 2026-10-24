@@ -10,7 +10,7 @@ import {
   Eye,
   PlusCircle,
   CreditCard,
-  DollarSign,
+  IndianRupee,
   Calendar,
   CheckCircle2,
   Trash2,
@@ -102,28 +102,6 @@ export default function BillDetailPage() {
   const totalPaid = billPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const balanceRemaining = Math.max(0, grandTotal - totalPaid);
 
-  // Records a receipt for the whole remaining balance
-  const handleMarkPaid = async () => {
-    if (!bill || !bill._id) return;
-    if (!confirm(`Record a Cash receipt of ₹${formatCurrency(balanceRemaining)} dated today to mark this bill fully paid?`)) return;
-    try {
-      const res = await fetch(`/api/bills/${bill._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markPaid: true, paymentMode: "Cash" }),
-      });
-      if (res.ok) {
-        fetchBill();
-        fetchPayments();
-      } else {
-        const errData = await res.json();
-        alert(errData.message || "Failed to mark bill as paid");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentAmount || Number(paymentAmount) <= 0) {
@@ -206,6 +184,16 @@ export default function BillDetailPage() {
             <p className="text-xs text-slate-400 truncate">
               Customer: <span className="text-slate-200 uppercase font-semibold">{bill.billedTo?.name}</span> | Date: {bill.date}
             </p>
+            {bill.items?.some((it) => it.purchaseId) && (
+              <p className="text-xs text-slate-400 flex flex-wrap items-center gap-1.5 mt-1">
+                <span>Sold from purchase:</span>
+                {[...new Map(bill.items.filter((it) => it.purchaseId).map((it) => [it.purchaseId, it.inwardNo])).entries()].map(([pid, inwardNo]) => (
+                  <Link key={pid} href={`/purchases/${pid}`} className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold hover:underline">
+                    {inwardNo}
+                  </Link>
+                ))}
+              </p>
+            )}
           </div>
         </div>
 
@@ -251,7 +239,7 @@ export default function BillDetailPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <DollarSign className="w-5 h-5" />
+              <IndianRupee className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -278,28 +266,14 @@ export default function BillDetailPage() {
                 setPaymentAmount(balanceRemaining > 0 ? String(balanceRemaining) : String(grandTotal));
                 setShowPaymentModal(true);
               }}
-              className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95"
+              disabled={balanceRemaining <= 0}
+              title={balanceRemaining <= 0 ? "Fully paid, nothing pending" : "Record a payment from the customer"}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
               <PlusCircle className="w-4 h-4" />
               <span>+ Record Payment</span>
             </button>
 
-            {status !== "PAID" && (
-              <button
-                onClick={handleMarkPaid}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl border border-slate-700 transition-all"
-                title="Record a receipt for the full remaining balance"
-              >
-                Mark Paid
-              </button>
-            )}
-
-            <Link
-              href={`/reports/payments?customerName=${encodeURIComponent(bill.billedTo?.name || "")}`}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-semibold text-xs rounded-xl transition-all"
-            >
-              View Full Report
-            </Link>
           </div>
         </div>
 

@@ -12,7 +12,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  DollarSign,
+  IndianRupee,
   Scale,
   Clock,
   X,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import DateRangeFilter, { DateRange, inDateRange } from "@/components/DateRangeFilter";
+import SaleStatusBadge, { MarginTag } from "@/components/SaleStatusBadge";
 
 export default function PurchasesListPage() {
   const router = useRouter();
@@ -152,7 +153,7 @@ export default function PurchasesListPage() {
             <div className="text-[10px] text-slate-500">Gross inward value</div>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+            <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
@@ -306,6 +307,10 @@ export default function PurchasesListPage() {
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">Material:</span>
                     <div className="font-extrabold text-amber-300 uppercase truncate">
                       {p.qty?.toFixed(2)} {p.unit} • {p.material}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <SaleStatusBadge status={p.saleStatus} soldQty={p.soldQty} qty={p.qty} unit={p.unit} />
+                      <MarginTag profit={p.trade?.profit} soldQty={p.soldQty} />
                     </div>
                     {p.unloadingPoint && (
                       <span className="text-[10px] text-slate-400 truncate block mt-0.5">📍 {p.unloadingPoint}</span>
@@ -480,6 +485,10 @@ export default function PurchasesListPage() {
                       <div className="font-bold text-slate-100 uppercase">{p.material}</div>
                       <div className="text-[11px] text-slate-400">
                         <span className="text-amber-400 font-bold">{p.qty?.toFixed(2)}</span> {p.unit}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <SaleStatusBadge status={p.saleStatus} soldQty={p.soldQty} qty={p.qty} unit={p.unit} />
+                        <MarginTag profit={p.trade?.profit} soldQty={p.soldQty} />
                       </div>
                     </td>
 

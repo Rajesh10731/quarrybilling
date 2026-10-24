@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     await connectToDatabase();
 
     if (searchParams.get("nextQuotationNo")) {
-      return NextResponse.json({ quotationNo: await suggestNextQuotationNo() });
+      return NextResponse.json({ quotationNo: await suggestNextQuotationNo(searchParams.get("date") || undefined) });
     }
 
     const filter = query
