@@ -1,7 +1,17 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "quarry_billing_super_secret_jwt_key_2026";
+const DEV_JWT_SECRET = "quarry_billing_super_secret_jwt_key_2026";
+
+/** Key that signs login tokens. Production must set its own JWT_SECRET; the built-in one is for local use only. */
+function jwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET is not set on the server");
+  }
+  return DEV_JWT_SECRET;
+}
 
 export interface UserSession {
   userId: string;
@@ -11,12 +21,12 @@ export interface UserSession {
 }
 
 export function signToken(payload: UserSession): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign(payload, jwtSecret(), { expiresIn: "7d" });
 }
 
 export function verifyToken(token: string): UserSession | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as UserSession;
+    return jwt.verify(token, jwtSecret()) as UserSession;
   } catch {
     return null;
   }

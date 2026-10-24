@@ -4,6 +4,7 @@ import { Bill } from "@/models/Bill";
 import { Customer } from "@/models/Customer";
 import { Payment } from "@/models/Payment";
 import { getSession } from "@/lib/auth";
+import { validateBillSourcing } from "@/lib/sourcing";
 import {
   BILL_HEADER_FIELDS,
   applyBillTotals,
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
     await connectToDatabase();
 
     if (searchParams.get("nextInvoiceNo")) {
-      return NextResponse.json({ invoiceNo: await suggestNextInvoiceNo() });
+      return NextResponse.json({ invoiceNo: await suggestNextInvoiceNo(searchParams.get("date") || undefined) });
     }
 
     let filter = {};
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
     body.invoiceNo = body.invoiceNo.trim();
     body.date = toISODate(body.date);
     applyBillTotals(body);
+    await validateBillSourcing(body.items);
     await assertUniqueInvoiceNo(body.invoiceNo);
 
     // Payment status is derived from receipts; an amount received at billing time is recorded as a receipt below.

@@ -16,7 +16,7 @@ import {
   AlertCircle,
   X,
   Clock,
-  DollarSign,
+  IndianRupee,
   Scale,
   Phone,
   MapPin,
@@ -312,7 +312,7 @@ export default function BillsListPage() {
             <div className="text-[10px] text-emerald-400 font-semibold">{paidCount} cleared • {partialCount} partial</div>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+            <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
@@ -437,8 +437,6 @@ export default function BillsListPage() {
                 const paid = bill.paidAmount || 0;
                 const dueOnBill = Math.max(0, grand - paid);
                 const transportFee = bill.lorryFreight || 0;
-                const customerTillDateDue = bill.customerBalanceTillDate ?? dueOnBill;
-
                 return (
                   <div
                     key={bill._id}
@@ -507,7 +505,7 @@ export default function BillsListPage() {
                         <span className="font-black text-white">₹{formatCurrency(grand)}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-emerald-400 font-semibold block">Paid (Partial):</span>
+                        <span className="text-[10px] text-emerald-400 font-semibold block">Paid:</span>
                         <span className="font-black text-emerald-400">₹{formatCurrency(paid)}</span>
                       </div>
                       <div>
@@ -518,17 +516,12 @@ export default function BillsListPage() {
                       </div>
                     </div>
 
-                    {/* Customer Balance Till Date Banner */}
-                    <div className="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Customer Owed Till Date:</span>
-                        <span className={`font-black ${customerTillDateDue > 0 ? "text-red-400" : "text-emerald-400"}`}>
-                          ₹{formatCurrency(customerTillDateDue)}
-                        </span>
-                      </div>
+                    {/* Payment status (tap to record a payment while money is due) */}
+                    <div className="flex justify-end items-center text-xs">
                       <button
                         onClick={() => openPaymentModal(bill)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 shadow-sm active:scale-95 transition-all ${
+                        disabled={dueOnBill <= 0}
+                        className={`disabled:cursor-default px-3 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 shadow-sm active:scale-95 transition-all ${
                           isPaid
                             ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                             : isPartial
@@ -563,7 +556,7 @@ export default function BillsListPage() {
                         onClick={() => openPaymentModal(bill)}
                         className="flex-1 flex items-center justify-center space-x-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition-all"
                       >
-                        <DollarSign className="w-3.5 h-3.5" />
+                        <IndianRupee className="w-3.5 h-3.5" />
                         <span>Pay</span>
                       </button>
 
@@ -622,9 +615,8 @@ export default function BillsListPage() {
                       <th className="p-3">Vehicle & Transporter</th>
                       <th className="p-3 text-right text-amber-400">Transport Charges</th>
                       <th className="p-3 text-right">Total Amount</th>
-                      <th className="p-3 text-right text-emerald-400">Paid (Partial)</th>
+                      <th className="p-3 text-right text-emerald-400">Paid</th>
                       <th className="p-3 text-right text-red-400">Bill Due</th>
-                      <th className="p-3 text-right">Customer Due (Till Date)</th>
                       <th className="p-3 text-center">Status</th>
                       <th className="p-3 text-right">Actions</th>
                     </tr>
@@ -636,7 +628,6 @@ export default function BillsListPage() {
                       const paid = bill.paidAmount || 0;
                       const dueOnBill = Math.max(0, grand - paid);
                       const transportFee = bill.lorryFreight || 0;
-                      const customerTillDateDue = bill.customerBalanceTillDate ?? dueOnBill;
 
                       return (
                         <tr key={bill._id} className="hover:bg-slate-800/40 transition-colors group">
@@ -718,26 +709,13 @@ export default function BillsListPage() {
                             </span>
                           </td>
 
-                          {/* Customer Balance Till Date */}
-                          <td className="p-3 text-right whitespace-nowrap">
-                            <span
-                              className={`px-2 py-0.5 rounded-lg text-[11px] font-black inline-block ${
-                                customerTillDateDue > 0
-                                  ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                                  : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                              }`}
-                              title="Total cumulative pending balance across all bills for this customer till date"
-                            >
-                              ₹{formatCurrency(customerTillDateDue)}
-                            </span>
-                          </td>
-
                           {/* Status */}
                           <td className="p-3 text-center whitespace-nowrap">
                             <button
                               onClick={() => openPaymentModal(bill)}
-                              title="Click to record payment installment"
-                              className={`px-3 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                              disabled={dueOnBill <= 0}
+                              title={dueOnBill <= 0 ? "Fully paid" : "Click to record payment installment"}
+                              className={`disabled:cursor-default disabled:pointer-events-none px-3 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                                 status === "PAID"
                                   ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/35 hover:bg-emerald-500/25"
                                   : status === "PARTIAL"
@@ -758,10 +736,11 @@ export default function BillsListPage() {
                           <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
                             <button
                               onClick={() => openPaymentModal(bill)}
-                              className="inline-flex items-center p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 transition-colors"
-                              title="Record Payment Installment"
+                              disabled={dueOnBill <= 0}
+                              className="inline-flex items-center p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                              title={dueOnBill <= 0 ? "Fully paid, nothing pending" : "Record Payment Installment"}
                             >
-                              <DollarSign className="w-3.5 h-3.5" />
+                              <IndianRupee className="w-3.5 h-3.5" />
                             </button>
                             <Link
                               href={`/bills/${bill._id}`}
@@ -919,9 +898,11 @@ export default function BillsListPage() {
                           {c.latestBill && (
                             <button
                               onClick={() => openPaymentModal(c.latestBill)}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 inline-flex items-center gap-1"
+                              disabled={isFullyPaid}
+                              title={isFullyPaid ? "Fully paid, nothing pending" : "Record a payment"}
+                              className="disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 inline-flex items-center gap-1"
                             >
-                              <DollarSign className="w-3 h-3" />
+                              <IndianRupee className="w-3 h-3" />
                               <span>Record Payment</span>
                             </button>
                           )}

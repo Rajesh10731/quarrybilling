@@ -14,7 +14,7 @@ import {
   Clock,
   Phone,
   MapPin,
-  DollarSign,
+  IndianRupee,
   Scale,
   Eye,
 } from "lucide-react";

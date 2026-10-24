@@ -6,9 +6,36 @@ import { CompanySettings } from "@/models/CompanySettings";
 import { Customer } from "@/models/Customer";
 import { Bill } from "@/models/Bill";
 
+/**
+ * Production: no demo data. Only creates the first admin account (from the ADMIN_EMAIL /
+ * ADMIN_PASSWORD / ADMIN_NAME settings) while the database has no users; after that it is closed.
+ */
+async function createFirstAdmin() {
+  if (await User.exists({})) {
+    return NextResponse.json({ message: "Not found" }, { status: 404 });
+  }
+  const email = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.ADMIN_PASSWORD || "");
+  if (!email || password.length < 10) {
+    return NextResponse.json(
+      { message: "Set ADMIN_EMAIL and ADMIN_PASSWORD (at least 10 characters) on the server first." },
+      { status: 503 }
+    );
+  }
+  await User.create({
+    name: process.env.ADMIN_NAME || "Admin",
+    email,
+    password: await bcrypt.hash(password, 10),
+    role: "admin",
+  });
+  if (!(await CompanySettings.exists({}))) await CompanySettings.create({});
+  return NextResponse.json({ message: `Admin account created for ${email}. Sign in with it now.` });
+}
+
 export async function GET() {
   try {
     await connectToDatabase();
+    if (process.env.NODE_ENV === "production") return await createFirstAdmin();
 
     // 1. Seed Admin User
     let adminUser = await User.findOne({ email: "admin@quarry.com" });

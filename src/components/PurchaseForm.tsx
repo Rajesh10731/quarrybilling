@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Truck,
   Building2,
   Scale,
-  DollarSign,
+  IndianRupee,
   AlertCircle,
   FileText,
 } from "lucide-react";
@@ -77,7 +77,7 @@ export default function PurchaseForm({
     transportName: initialPurchase?.transportName || "",
     driverName: initialPurchase?.driverName || "",
     driverMobile: initialPurchase?.driverMobile || "",
-    unloadingPoint: initialPurchase?.unloadingPoint || "Main Crusher Hopper",
+    unloadingPoint: initialPurchase?.unloadingPoint || "",
 
     // Material & Quantities
     material: initialPurchase?.material || "ROUGH STONE / BOULDER",
@@ -182,18 +182,31 @@ export default function PurchaseForm({
 
   useEffect(() => {
     if (isEditing) return;
-    fetch("/api/purchases?nextInwardNo=1")
+    const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    setFormData((prev) => (prev.time ? prev : { ...prev, time: now }));
+  }, [isEditing]);
+
+  // Suggest the next inward number (PUR-YYYY-MM-NNN) for the purchase month.
+  // Follows the date until the user types their own number.
+  const autoInwardNo = useRef("");
+  useEffect(() => {
+    if (isEditing) return;
+    let stale = false;
+    fetch(`/api/purchases?nextInwardNo=1&date=${encodeURIComponent(formData.date || "")}`)
       .then((res) => res.json())
       .then((data) => {
-        const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
-        setFormData((prev) => ({
-          ...prev,
-          inwardNo: prev.inwardNo || data?.inwardNo || "",
-          time: prev.time || now,
-        }));
+        if (stale || !data?.inwardNo) return;
+        const lastSuggested = autoInwardNo.current;
+        autoInwardNo.current = data.inwardNo;
+        setFormData((prev) =>
+          prev.inwardNo && prev.inwardNo !== lastSuggested ? prev : { ...prev, inwardNo: data.inwardNo }
+        );
       })
       .catch((err) => console.error(err));
-  }, [isEditing]);
+    return () => {
+      stale = true;
+    };
+  }, [isEditing, formData.date]);
 
   // ---- Step-by-step flow ----
   const [step, setStep] = useState(0);
@@ -610,7 +623,7 @@ export default function PurchaseForm({
             <div className="lg:col-span-2 glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2.5 text-amber-400 font-bold text-xs sm:text-sm border-b border-slate-800/80 pb-3">
                 <span className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-xs font-black shadow-sm shrink-0">2</span>
-                <DollarSign className="w-5 h-5" />
+                <IndianRupee className="w-5 h-5" />
                 <span className="tracking-tight">Payment Settlement</span>
               </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRightLeft, CheckCircle2, Edit, Eye, Printer, RotateCcw, Trash2, X, XCircle } from "lucide-react";
@@ -51,15 +51,26 @@ export default function QuotationDetailPage() {
     setBusy(false);
   };
 
-  const openConvert = async () => {
-    setConvertError("");
-    setShowConvert(true);
+  // Next invoice number (INV-YYYY-MM-NNN) for the bill date, unless the user typed their own
+  const autoInvoiceNo = useRef("");
+  const latestDate = useRef("");
+  const suggestInvoiceNo = async (date: string) => {
+    latestDate.current = date;
     try {
-      const data = await (await fetch("/api/bills?nextInvoiceNo=1")).json();
-      if (data?.invoiceNo) setInvoiceNo(data.invoiceNo);
+      const data = await (await fetch(`/api/bills?nextInvoiceNo=1&date=${encodeURIComponent(date)}`)).json();
+      if (latestDate.current !== date || !data?.invoiceNo) return;
+      const lastSuggested = autoInvoiceNo.current;
+      autoInvoiceNo.current = data.invoiceNo;
+      setInvoiceNo((prev) => (prev && prev !== lastSuggested ? prev : data.invoiceNo));
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const openConvert = () => {
+    setConvertError("");
+    setShowConvert(true);
+    suggestInvoiceNo(billDate);
   };
 
   const handleConvert = async (e: React.FormEvent) => {
@@ -212,7 +223,10 @@ export default function QuotationDetailPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Bill Date *</label>
-                <input required type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
+                <input required type="date" value={billDate} onChange={(e) => {
+                    setBillDate(e.target.value);
+                    suggestInvoiceNo(e.target.value);
+                  }} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-slate-400 mb-1">Vehicle No. (optional)</label>

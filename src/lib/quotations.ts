@@ -7,7 +7,7 @@ import {
   LedgerError,
   billHeaderFromSettings,
   exactName,
-  incrementDocNumber,
+  nextMonthlyDocNo,
   recalcBill,
   round2,
   suggestNextInvoiceNo,
@@ -126,14 +126,9 @@ export async function assertUniqueQuotationNo(quotationNo: string, excludeId?: s
   }
 }
 
-/** Suggest the next free quotation number, e.g. QT-0001, QT-0002. */
-export async function suggestNextQuotationNo() {
-  const last = await Quotation.findOne().sort({ createdAt: -1 }).select("quotationNo").lean();
-  let candidate = last?.quotationNo ? incrementDocNumber(last.quotationNo) : "QT-0001";
-  for (let i = 0; i < 50 && (await Quotation.exists({ quotationNo: exactName(candidate) })); i++) {
-    candidate = incrementDocNumber(candidate);
-  }
-  return candidate;
+/** Suggest the next free quotation number for a quotation dated `date`, e.g. QUO-2026-01-001. */
+export async function suggestNextQuotationNo(date?: string) {
+  return nextMonthlyDocNo(Quotation, "quotationNo", "QUO", date);
 }
 
 /** Company letterhead details copied onto a new quotation. */
@@ -165,7 +160,7 @@ export async function convertQuotationToBill(quotation: IQuotation, opts: { invo
     throw new LedgerError("A rejected quotation cannot be converted. Reopen it first.");
   }
 
-  const invoiceNo = String(opts.invoiceNo || "").trim() || (await suggestNextInvoiceNo());
+  const invoiceNo = String(opts.invoiceNo || "").trim() || (await suggestNextInvoiceNo(opts.date));
   if (await Bill.exists({ invoiceNo: exactName(invoiceNo) })) {
     throw new LedgerError(`Invoice number "${invoiceNo}" is already used by another bill`, 409);
   }

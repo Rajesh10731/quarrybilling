@@ -41,6 +41,9 @@ export interface BillData {
     unit: string;
     price: number;
     amount: number;
+    /** Purchase (inward load) this line is sold from */
+    purchaseId?: string;
+    inwardNo?: string;
   }>;
   totalQty: number;
   totalQtyUnit: string;

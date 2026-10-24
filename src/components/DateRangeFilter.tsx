@@ -11,11 +11,9 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 
 function presets(): { label: string; range: DateRange }[] {
   const now = new Date();
-  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   return [
     { label: "Today", range: { from: iso(now), to: iso(now) } },
     { label: "This Month", range: { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) } },
-    { label: "This FY", range: { from: `${fyStart}-04-01`, to: `${fyStart + 1}-03-31` } },
     { label: "All", range: { from: "", to: "" } },
   ];
 }
@@ -32,7 +30,7 @@ export function inDateRange<T>(records: T[], range: DateRange, getDate: (r: T) =
   });
 }
 
-/** From / To date pickers with quick presets (Today, This Month, This FY, All). */
+/** From / To date pickers with quick presets (Today, This Month, All). */
 export default function DateRangeFilter({ value, onChange }: { value: DateRange; onChange: (range: DateRange) => void }) {
   const active = presets().find((p) => p.range.from === value.from && p.range.to === value.to)?.label;
   const inputCls =

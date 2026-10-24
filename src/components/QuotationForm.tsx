@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
@@ -91,7 +91,7 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
     };
   });
 
-  // Saved customers for quick fill; next quotation number, default terms and letterhead for a new quotation
+  // Saved customers for quick fill; default terms and letterhead for a new quotation
   useEffect(() => {
     fetch("/api/customers")
       .then((res) => res.json())
@@ -99,10 +99,6 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
       .catch((err) => console.error(err));
 
     if (isEditing) return;
-    fetch("/api/quotations?nextQuotationNo=1")
-      .then((res) => res.json())
-      .then((data) => data?.quotationNo && setForm((prev) => (prev.quotationNo ? prev : { ...prev, quotationNo: data.quotationNo })))
-      .catch((err) => console.error(err));
     fetch("/api/settings")
       .then((res) => res.json())
       .then((s) => {
@@ -118,6 +114,28 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
       })
       .catch((err) => console.error(err));
   }, [isEditing]);
+
+  // Suggest the next quotation number (QUO-YYYY-MM-NNN) for the quotation month.
+  // Follows the date until the user types their own number.
+  const autoQuotationNo = useRef("");
+  useEffect(() => {
+    if (isEditing) return;
+    let stale = false;
+    fetch(`/api/quotations?nextQuotationNo=1&date=${encodeURIComponent(form.date || "")}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (stale || !data?.quotationNo) return;
+        const lastSuggested = autoQuotationNo.current;
+        autoQuotationNo.current = data.quotationNo;
+        setForm((prev) =>
+          prev.quotationNo && prev.quotationNo !== lastSuggested ? prev : { ...prev, quotationNo: data.quotationNo }
+        );
+      })
+      .catch((err) => console.error(err));
+    return () => {
+      stale = true;
+    };
+  }, [isEditing, form.date]);
 
   // Live preview of totals (the server recomputes the same way when saving)
   // Same money rules as sales bills (and the server): discount on material, GST after discount, then charges
@@ -290,7 +308,7 @@ export default function QuotationForm({ initialQuotation, isEditing = false, onS
         <div className="glass-card rounded-3xl px-5 py-4 border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
           <div>
             <label className={labelCls}>Quotation No. *</label>
-            <input className={`${inputCls} font-bold text-amber-400`} value={form.quotationNo} onChange={(e) => setForm({ ...form, quotationNo: e.target.value })} placeholder="QT-0001" />
+            <input className={`${inputCls} font-bold text-amber-400`} value={form.quotationNo} onChange={(e) => setForm({ ...form, quotationNo: e.target.value })} placeholder="QUO-2026-01-001" />
           </div>
           <div>
             <label className={labelCls}>Quotation Date *</label>

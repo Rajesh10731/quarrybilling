@@ -206,28 +206,23 @@ export async function assertUniqueInvoiceNo(invoiceNo: string, excludeId?: strin
 }
 
 /**
- * Increase the running number in a document number, keeping its zero padding.
- * The last number that is not a year is used: "PUR-2026-0001" -> "PUR-2026-0002",
- * "1/2026" -> "2/2026", "S-009" -> "S-010", "INV/2026-27/015" -> "INV/2026-27/016".
+ * Next document number in the monthly format PREFIX-YYYY-MM-NNN, e.g. INV-2026-01-001.
+ * Year and month come from the document's date; the count restarts at 001 each month and
+ * continues from the highest number used that month (so a deleted number is never reused).
  */
-export function incrementDocNumber(docNo: string) {
-  const groups = [...docNo.matchAll(/\d+/g)];
-  if (!groups.length) return `${docNo}-1`;
-  const isYear = (g: RegExpMatchArray) => g[0].length === 4 && +g[0] >= 1900 && +g[0] <= 2100;
-  const target = [...groups].reverse().find((g) => !isYear(g)) || groups[groups.length - 1];
-  const start = target.index ?? 0;
-  const next = String(parseInt(target[0], 10) + 1).padStart(target[0].length, "0");
-  return docNo.slice(0, start) + next + docNo.slice(start + target[0].length);
+export async function nextMonthlyDocNo(model: mongoose.Model<any>, field: string, prefix: string, date?: string) {
+  const iso = toISODate(date);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : todayISO();
+  const head = `${prefix}-${d.slice(0, 4)}-${d.slice(5, 7)}-`;
+  const pattern = new RegExp(`^${escapeRegex(head)}(\\d+)$`, "i");
+  const used = await model.find({ [field]: { $regex: pattern } }).select(field).lean<Record<string, string>[]>();
+  const max = used.reduce((m, doc) => Math.max(m, parseInt(pattern.exec(String(doc[field]))?.[1] || "0", 10)), 0);
+  return `${head}${String(max + 1).padStart(3, "0")}`;
 }
 
-/** Suggest the next free invoice number by incrementing the most recent bill's invoice no. */
-export async function suggestNextInvoiceNo() {
-  const last = await Bill.findOne().sort({ createdAt: -1 }).select("invoiceNo").lean();
-  let candidate = last?.invoiceNo ? incrementDocNumber(last.invoiceNo) : `1/${new Date().getFullYear()}`;
-  for (let i = 0; i < 50 && (await Bill.exists({ invoiceNo: exactName(candidate) })); i++) {
-    candidate = incrementDocNumber(candidate);
-  }
-  return candidate;
+/** Suggest the next free invoice number for a bill dated `date`, e.g. INV-2026-01-001. */
+export async function suggestNextInvoiceNo(date?: string) {
+  return nextMonthlyDocNo(Bill, "invoiceNo", "INV", date);
 }
 
 /**

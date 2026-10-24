@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Purchase } from "@/models/Purchase";
 import { getSession } from "@/lib/auth";
+import { purchaseSales, purchasesAvailableForSale, soldStatus, tradeMargin } from "@/lib/sourcing";
 import { LedgerError, containsText, errorResponse, round2, toISODate } from "@/lib/ledger";
 import { DERIVED_PAYMENT_FIELDS, assertUniqueInwardNo, computePurchaseTotals, linkVendor, suggestNextInwardNo, syncPurchasePayments } from "@/lib/purchases";
 
@@ -21,8 +22,13 @@ export async function GET(req: Request) {
 
     await connectToDatabase();
 
+    // Loads that still have quantity left to sell (bill form). billId = the bill being edited.
+    if (searchParams.get("forSale")) {
+      return NextResponse.json(await purchasesAvailableForSale(searchParams.get("billId") || undefined));
+    }
+
     if (searchParams.get("nextInwardNo")) {
-      return NextResponse.json({ inwardNo: await suggestNextInwardNo() });
+      return NextResponse.json({ inwardNo: await suggestNextInwardNo(searchParams.get("date") || undefined) });
     }
 
     const filter: any = {};
@@ -52,8 +58,15 @@ export async function GET(req: Request) {
       if (toDate) filter.date.$lte = toISODate(toDate);
     }
 
-    const purchases = await Purchase.find(filter).sort({ createdAt: -1 });
-    return NextResponse.json(purchases);
+    const purchases = await Purchase.find(filter).sort({ createdAt: -1 }).lean();
+    const sold = await purchaseSales(purchases.map((p) => p._id));
+    return NextResponse.json(
+      purchases.map((p) => {
+        const summary = sold.get(String(p._id));
+        const { sales: _sales, ...trade } = tradeMargin(p, summary);
+        return { ...p, ...soldStatus(p, summary), trade };
+      })
+    );
   } catch (error: any) {
     return NextResponse.json(
       { message: error?.message || "Failed to fetch purchases" },

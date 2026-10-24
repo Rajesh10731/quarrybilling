@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Users, Search, Plus, FileText, Phone, MapPin, Trash2, Eye, X, AlertCircle, DollarSign } from "lucide-react";
+import { Users, Search, Plus, FileText, Phone, MapPin, Trash2, Eye, X, AlertCircle, IndianRupee } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function CustomersListPage() {
@@ -189,7 +189,7 @@ export default function CustomersListPage() {
                   href={`/reports/payments?customerName=${encodeURIComponent(cust.name)}`}
                   className="flex-1 flex items-center justify-center space-x-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs"
                 >
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <IndianRupee className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Payments</span>
                 </Link>
 
@@ -285,7 +285,7 @@ export default function CustomersListPage() {
                         className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all shadow-sm"
                         title="View Customer Payments & Receipts"
                       >
-                        <DollarSign className="w-3.5 h-3.5" />
+                        <IndianRupee className="w-3.5 h-3.5" />
                         <span>Payments</span>
                       </Link>
                       {confirmDeleteId === cust._id ? (
