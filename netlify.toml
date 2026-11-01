@@ -1,0 +1,3 @@
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**, .next/cache/**"
+  SECRETS_SCAN_OMIT_KEYS = "JWT_SECRET"

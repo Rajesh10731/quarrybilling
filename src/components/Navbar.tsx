@@ -86,6 +86,7 @@ export default function Navbar({ user }: { user?: any } = {}) {
         { name: "Vendors", subtitle: "Raw Material Suppliers", href: "/vendors", icon: Building2 },
         { name: "Payment Reports", subtitle: "Receivables & Ledgers", href: "/reports/payments", icon: CreditCard },
         { name: "Trade Margin", subtitle: "Margin on each load sold", href: "/reports/trade-margin", icon: TrendingUp },
+        { name: "Purchase Report", subtitle: "Inward loads — freight separated", href: "/reports/purchases", icon: Truck },
       ],
     },
     {
