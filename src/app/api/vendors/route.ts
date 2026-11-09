@@ -32,17 +32,26 @@ export async function GET(req: Request) {
 
     const vendors = await Vendor.find(filter).sort({ name: 1 }).lean();
 
-    // Attach purchase aggregates per vendor
+    // Attach purchase aggregates per vendor (separating vendor items and transport charges)
     const vendorsWithStats = await Promise.all(
       vendors.map(async (v) => {
-        const purchases = await Purchase.find(vendorPurchaseFilter(v)).select("grandTotal paidAmount qty").lean();
+        const purchases = await Purchase.find(vendorPurchaseFilter(v))
+          .select("grandTotal paidAmount qty materialAmount lorryFreight freightPaidBy")
+          .lean();
         const summary = vendorSummary(v.openingBalance, purchases);
         return {
           ...v,
           totalPurchases: summary.totalPurchases,
           totalAmount: summary.totalAmount,
+          totalMaterialAmount: summary.totalMaterialAmount,
+          totalTransportCharges: summary.totalTransportCharges,
           totalPaid: summary.totalPaid,
-          totalPending: summary.pendingBalance,
+          vendorPaid: summary.vendorPaid,
+          transportPaid: summary.transportPaid,
+          vendorPending: summary.vendorPending,
+          transportPending: summary.transportPending,
+          totalPending: summary.totalPending,
+          pendingBalance: summary.pendingBalance,
           totalTonnage: summary.totalTonnage,
         };
       })

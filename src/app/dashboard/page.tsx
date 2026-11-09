@@ -47,14 +47,15 @@ export default async function DashboardPage() {
 
   // Compute inward purchase stats
   const totalPurchasesCount = await Purchase.countDocuments();
-  const allPurchases = await Purchase.find().select("grandTotal paidAmount qty").lean();
-  const totalPurchaseSpend = allPurchases.reduce((acc, p) => acc + (p.grandTotal || 0), 0);
+  const allPurchases = await Purchase.find().select("grandTotal materialAmount lorryFreight paidAmount qty").lean();
+  const totalMaterialSpend = allPurchases.reduce((acc, p) => acc + (p.materialAmount || 0), 0);
+  const totalLorryFreight = allPurchases.reduce((acc, p) => acc + (p.lorryFreight || 0), 0);
   const totalInwardTons = allPurchases.reduce((acc, p) => acc + (p.qty || 0), 0);
-  // Still owed to vendors: opening balances + unpaid part of each purchase (same rule as the vendor screens)
+  // Still owed to vendors: opening balances + unpaid material amount only (lorry freight is paid to transporter separately)
   const vendorOpening = await Vendor.find().select("openingBalance").lean();
   const pendingPurchasePayables =
     vendorOpening.reduce((acc, v) => acc + (v.openingBalance || 0), 0) +
-    allPurchases.reduce((acc, p) => acc + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0);
+    allPurchases.reduce((acc, p) => acc + Math.max(0, (p.materialAmount || 0) - (p.paidAmount || 0)), 0);
 
   const currentDateStr = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -290,9 +291,9 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               ["Loads Received", String(totalPurchasesCount), "text-white"],
-              ["Tonnes Bought", totalInwardTons.toFixed(2), "text-white"],
-              ["Total Purchases", `₹${formatCurrency(totalPurchaseSpend)}`, "text-white"],
-              ["Vendor Payables", `₹${formatCurrency(pendingPurchasePayables)}`, "text-red-400"],
+              ["Material Cost", `\u20B9${formatCurrency(totalMaterialSpend)}`, "text-emerald-400"],
+              ["Lorry Freight", `\u20B9${formatCurrency(totalLorryFreight)}`, "text-amber-400"],
+              ["Vendor Payables", `\u20B9${formatCurrency(pendingPurchasePayables)}`, "text-red-400"],
             ].map(([label, value, color]) => (
               <div key={label} className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2">
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
@@ -344,16 +345,24 @@ export default async function DashboardPage() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
+                    <div className="flex justify-between items-start text-xs">
                       <div className="min-w-0 flex-1 mr-2">
                         <span className="text-[10px] text-slate-500 uppercase font-bold block">Vendor / Supplier:</span>
                         <span className="font-extrabold text-white uppercase truncate block">
                           {purchase.vendorName || "--"}
                         </span>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Cost:</span>
-                        <span className="font-black text-amber-400 text-sm">₹{formatCurrency(purchase.grandTotal)}</span>
+                      <div className="text-right shrink-0 space-y-0.5">
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Material:</span>
+                          <span className="font-black text-emerald-400 text-sm">₹{formatCurrency(purchase.materialAmount || 0)}</span>
+                        </div>
+                        {(purchase.lorryFreight && purchase.lorryFreight > 0) ? (
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase font-bold block">Lorry:</span>
+                            <span className="font-black text-amber-400 text-xs">₹{formatCurrency(purchase.lorryFreight)}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 

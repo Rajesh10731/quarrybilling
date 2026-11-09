@@ -128,13 +128,25 @@ export default function VendorsListPage() {
     }
   };
 
-  // Aggregated stats
+  // Aggregated stats (separated vendor items and transport freight charges)
   const totalPurchasesAcrossVendors = useMemo(
     () => vendors.reduce((acc, v) => acc + (v.totalAmount || 0), 0),
     [vendors]
   );
-  const totalPendingAcrossVendors = useMemo(
-    () => vendors.reduce((acc, v) => acc + (v.totalPending || 0), 0),
+  const totalMaterialAcrossVendors = useMemo(
+    () => vendors.reduce((acc, v) => acc + (v.totalMaterialAmount || (v.totalAmount || 0) - (v.totalTransportCharges || 0)), 0),
+    [vendors]
+  );
+  const totalTransportAcrossVendors = useMemo(
+    () => vendors.reduce((acc, v) => acc + (v.totalTransportCharges || 0), 0),
+    [vendors]
+  );
+  const totalVendorPendingAcrossVendors = useMemo(
+    () => vendors.reduce((acc, v) => acc + (v.vendorPending ?? v.pendingBalance ?? 0), 0),
+    [vendors]
+  );
+  const totalTransportPendingAcrossVendors = useMemo(
+    () => vendors.reduce((acc, v) => acc + (v.transportPending || 0), 0),
     [vendors]
   );
   const totalInwardsCount = useMemo(
@@ -186,8 +198,9 @@ export default function VendorsListPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* KPI Cards — Vendor Items & Transport Charges Separated */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Vendors */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-800 flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
@@ -201,33 +214,55 @@ export default function VendorsListPage() {
           </div>
         </div>
 
+        {/* Total Purchases Value */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-800 flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
-              Total Purchases Cost
+              Total Purchases Value
             </span>
-            <div className="text-lg sm:text-2xl font-black text-emerald-400">
+            <div className="text-lg sm:text-2xl font-black text-white truncate max-w-[130px] sm:max-w-none">
               ₹{formatCurrency(totalPurchasesAcrossVendors)}
             </div>
-            <div className="text-[10px] text-slate-500">Gross inward value</div>
+            <div className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+              <span>Items: ₹{formatCurrency(totalMaterialAcrossVendors)}</span>
+              <span>•</span>
+              <span className="text-amber-400">Transport: ₹{formatCurrency(totalTransportAcrossVendors)}</span>
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-200 shrink-0">
             <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-800 flex items-center justify-between">
+        {/* Vendor Items Pending Due (Payable to quarry suppliers) */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-red-500/30 bg-red-500/5 flex items-center justify-between">
           <div className="space-y-0.5">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-wider block">
               Vendor Pending Due
             </span>
-            <div className="text-lg sm:text-2xl font-black text-red-400">
-              ₹{formatCurrency(totalPendingAcrossVendors)}
+            <div className="text-lg sm:text-2xl font-black text-red-400 truncate max-w-[130px] sm:max-w-none">
+              ₹{formatCurrency(totalVendorPendingAcrossVendors)}
             </div>
-            <div className="text-[10px] text-slate-500">Total payable to suppliers</div>
+            <div className="text-[10px] text-red-300 font-medium">Payable to material suppliers</div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
             <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+        </div>
+
+        {/* Transport Charges Pending (Payable to lorry transport services) */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-amber-500/30 bg-amber-500/5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-wider block">
+              Transport Pending Due
+            </span>
+            <div className="text-lg sm:text-2xl font-black text-amber-300 truncate max-w-[130px] sm:max-w-none">
+              ₹{formatCurrency(totalTransportPendingAcrossVendors)}
+            </div>
+            <div className="text-[10px] text-amber-400/80 font-medium">Lorry freight services</div>
+          </div>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -303,22 +338,40 @@ export default function VendorsListPage() {
                   )}
                 </div>
 
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Purchases:</span>
-                  <span className="font-black text-slate-200">₹{formatCurrency(v.totalAmount || 0)}</span>
+                <div className="col-span-2 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Total Purchases:</span>
+                    <span className="font-black text-slate-200">₹{formatCurrency(v.totalAmount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] text-slate-400">
+                    <span>Items: ₹{formatCurrency(v.totalMaterialAmount || (v.totalAmount || 0) - (v.totalTransportCharges || 0))}</span>
+                    <span className="text-amber-400">Transport: ₹{formatCurrency(v.totalTransportCharges || 0)}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Balance Due Box */}
-              <div className="flex justify-between items-center bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400">Pending Balance:</span>
-                <span
-                  className={`text-sm font-black ${
-                    (v.totalPending || 0) > 0 ? "text-red-400" : "text-emerald-400"
-                  }`}
-                >
-                  ₹{formatCurrency(v.totalPending || 0)}
-                </span>
+              {/* Separated Balance Due Box (Vendor vs Transport) */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-xs">
+                <div>
+                  <span className="text-[10px] text-red-400 block font-bold uppercase">Vendor Pending:</span>
+                  <span
+                    className={`text-sm font-black ${
+                      (v.vendorPending ?? v.pendingBalance ?? 0) > 0 ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
+                    ₹{formatCurrency(v.vendorPending ?? v.pendingBalance ?? 0)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-amber-400 block font-bold uppercase">Transport Pending:</span>
+                  <span
+                    className={`text-sm font-black ${
+                      (v.transportPending || 0) > 0 ? "text-amber-300" : "text-slate-400"
+                    }`}
+                  >
+                    ₹{formatCurrency(v.transportPending || 0)}
+                  </span>
+                </div>
               </div>
 
               {/* Bottom Actions */}
@@ -380,21 +433,23 @@ export default function VendorsListPage() {
                 <th className="p-3.5">Contact Details</th>
                 <th className="p-3.5">Quarry Pit / Source</th>
                 <th className="p-3.5 text-center">Inward Loads</th>
-                <th className="p-3.5 text-right">Total Purchased (₹)</th>
-                <th className="p-3.5 text-right">Pending Balance (₹)</th>
+                <th className="p-3.5 text-right">Items Value (₹)</th>
+                <th className="p-3.5 text-right text-amber-400">Transport (₹)</th>
+                <th className="p-3.5 text-right text-red-400">Vendor Due (₹)</th>
+                <th className="p-3.5 text-right text-amber-300">Transport Due (₹)</th>
                 <th className="p-3.5 pr-5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-500 font-medium">
+                  <td colSpan={9} className="text-center py-16 text-slate-500 font-medium">
                     Loading vendors directory...
                   </td>
                 </tr>
               ) : vendors.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-500">
+                  <td colSpan={9} className="text-center py-16 text-slate-500">
                     <Building2 className="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-50" />
                     <p className="font-semibold">No vendors registered yet.</p>
                   </td>
@@ -438,17 +493,35 @@ export default function VendorsListPage() {
                       </span>
                     </td>
 
+                    {/* Items Value */}
                     <td className="p-3.5 text-right font-bold text-slate-100">
-                      ₹{formatCurrency(v.totalAmount || 0)}
+                      ₹{formatCurrency(v.totalMaterialAmount || (v.totalAmount || 0) - (v.totalTransportCharges || 0))}
                     </td>
 
+                    {/* Transport Freight */}
+                    <td className="p-3.5 text-right font-black text-amber-300">
+                      {(v.totalTransportCharges || 0) > 0 ? `₹${formatCurrency(v.totalTransportCharges)}` : "—"}
+                    </td>
+
+                    {/* Vendor Due */}
                     <td className="p-3.5 text-right">
                       <span
                         className={`font-black ${
-                          (v.totalPending || 0) > 0 ? "text-red-400" : "text-emerald-400"
+                          (v.vendorPending ?? v.pendingBalance ?? 0) > 0 ? "text-red-400" : "text-emerald-400"
                         }`}
                       >
-                        ₹{formatCurrency(v.totalPending || 0)}
+                        ₹{formatCurrency(v.vendorPending ?? v.pendingBalance ?? 0)}
+                      </span>
+                    </td>
+
+                    {/* Transport Due */}
+                    <td className="p-3.5 text-right">
+                      <span
+                        className={`font-black ${
+                          (v.transportPending || 0) > 0 ? "text-amber-300" : "text-slate-500"
+                        }`}
+                      >
+                        {(v.transportPending || 0) > 0 ? `₹${formatCurrency(v.transportPending)}` : "₹0.00"}
                       </span>
                     </td>
 

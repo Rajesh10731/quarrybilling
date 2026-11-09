@@ -123,49 +123,68 @@ export default function VendorStatementPage() {
         </div>
       </div>
 
-      {/* KPI Cards (Screen View) */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 print:hidden">
+      {/* KPI Cards (Screen View) — Vendor Items & Transport Charges Separated */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 print:hidden">
         <div className="glass-card rounded-2xl p-4 border border-slate-800">
           <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
             Total Inward Loads
           </span>
-          <div className="text-2xl font-black text-white mt-1">
+          <div className="text-xl sm:text-2xl font-black text-white mt-1">
             {summary.totalPurchases || 0} Loads
           </div>
+          <div className="text-[10px] text-slate-500 mt-0.5">{summary.totalTonnage?.toFixed(2)} Tons</div>
         </div>
 
         <div className="glass-card rounded-2xl p-4 border border-slate-800">
           <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
-            Total Purchased Value
+            Material Purchases
           </span>
-          <div className="text-2xl font-black text-slate-100 mt-1">
-            ₹{formatCurrency(summary.totalAmount || 0)}
+          <div className="text-xl sm:text-2xl font-black text-slate-100 mt-1">
+            ₹{formatCurrency(summary.totalMaterialAmount || (summary.totalAmount - (summary.totalTransportCharges || 0)))}
           </div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Items from vendor</div>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 border border-slate-800">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
-            Total Paid So Far
+        <div className="glass-card rounded-2xl p-4 border border-amber-500/30 bg-amber-500/5">
+          <span className="text-[11px] text-amber-400 uppercase font-bold tracking-wider block">
+            Transport Charges
           </span>
-          <div className="text-2xl font-black text-emerald-400 mt-1">
-            ₹{formatCurrency(summary.totalPaid || 0)}
+          <div className="text-xl sm:text-2xl font-black text-amber-300 mt-1">
+            ₹{formatCurrency(summary.totalTransportCharges || 0)}
           </div>
+          <div className="text-[10px] text-amber-400/80 mt-0.5">Lorry freight services</div>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 border border-slate-800">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
-            Pending Balance Owed
+        <div className="glass-card rounded-2xl p-4 border border-red-500/30 bg-red-500/5">
+          <span className="text-[11px] text-red-400 uppercase font-bold tracking-wider block">
+            Vendor Pending Due
           </span>
           <div
-            className={`text-2xl font-black mt-1 ${
-              summary.pendingBalance > 0 ? "text-red-400" : "text-emerald-400"
+            className={`text-xl sm:text-2xl font-black mt-1 ${
+              (summary.vendorPending ?? summary.pendingBalance ?? 0) > 0 ? "text-red-400" : "text-emerald-400"
             }`}
           >
-            ₹{formatCurrency(summary.pendingBalance || 0)}
+            ₹{formatCurrency(summary.vendorPending ?? summary.pendingBalance ?? 0)}
           </div>
           {summary.openingBalance ? (
-            <div className="text-[10px] text-slate-500 mt-1">incl. opening balance ₹{formatCurrency(summary.openingBalance)}</div>
-          ) : null}
+            <div className="text-[10px] text-slate-400 mt-0.5">incl. opening ₹{formatCurrency(summary.openingBalance)}</div>
+          ) : (
+            <div className="text-[10px] text-red-300/80 mt-0.5">Material balance</div>
+          )}
+        </div>
+
+        <div className="glass-card rounded-2xl p-4 border border-amber-500/20 bg-slate-900/60">
+          <span className="text-[11px] text-amber-400 uppercase font-bold tracking-wider block">
+            Transport Pending Due
+          </span>
+          <div
+            className={`text-xl sm:text-2xl font-black mt-1 ${
+              (summary.transportPending || 0) > 0 ? "text-amber-300" : "text-slate-400"
+            }`}
+          >
+            ₹{formatCurrency(summary.transportPending || 0)}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Lorry freight due</div>
         </div>
       </div>
 
@@ -219,10 +238,19 @@ export default function VendorStatementPage() {
               <strong>Total Purchased Amount:</strong> ₹{formatCurrency(summary.totalAmount)}
             </div>
             <div>
+              <strong>Material / Items Amount:</strong> ₹{formatCurrency(summary.totalMaterialAmount || (summary.totalAmount - (summary.totalTransportCharges || 0)))}
+            </div>
+            <div>
+              <strong>Transport / Freight Charges:</strong> ₹{formatCurrency(summary.totalTransportCharges || 0)}
+            </div>
+            <div>
               <strong>Amount Paid:</strong> ₹{formatCurrency(summary.totalPaid)}
             </div>
             <div className="text-sm font-black text-black pt-1">
-              <strong>BALANCE PAYABLE:</strong> ₹{formatCurrency(summary.pendingBalance)}
+              <strong>VENDOR BALANCE PAYABLE:</strong> ₹{formatCurrency(summary.vendorPending ?? summary.pendingBalance ?? 0)}
+            </div>
+            <div className="text-xs font-bold text-slate-800">
+              <strong>TRANSPORT CHARGES DUE:</strong> ₹{formatCurrency(summary.transportPending || 0)}
             </div>
           </div>
         </div>
@@ -240,7 +268,8 @@ export default function VendorStatementPage() {
                 <th className="p-2 border-r border-black text-left">Material</th>
                 <th className="p-2 border-r border-black text-center">Net Qty</th>
                 <th className="p-2 border-r border-black text-right">Rate (₹)</th>
-                <th className="p-2 border-r border-black text-right">Freight</th>
+                <th className="p-2 border-r border-black text-right">Material (₹)</th>
+                <th className="p-2 border-r border-black text-right text-amber-900">Freight (₹)</th>
                 <th className="p-2 border-r border-black text-right">Total (₹)</th>
                 <th className="p-2 border-r border-black text-center">Payment</th>
                 <th className="p-2 text-right print:hidden">Action</th>
@@ -249,7 +278,7 @@ export default function VendorStatementPage() {
           <tbody className="divide-y divide-slate-300">
             {purchases.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-slate-500">
+                <td colSpan={10} className="text-center py-8 text-slate-500">
                   No inward lorry entries recorded for this vendor yet.
                 </td>
               </tr>
@@ -278,7 +307,11 @@ export default function VendorStatementPage() {
                     ₹{formatCurrency(p.rate)}
                   </td>
 
-                  <td className="p-2 border-r border-black text-right">
+                  <td className="p-2 border-r border-black text-right font-medium">
+                    ₹{formatCurrency(p.materialAmount || (p.qty * p.rate))}
+                  </td>
+
+                  <td className="p-2 border-r border-black text-right font-semibold text-amber-900">
                     {p.lorryFreight ? `₹${formatCurrency(p.lorryFreight)}` : "—"}
                   </td>
 
@@ -331,7 +364,13 @@ export default function VendorStatementPage() {
               <td className="p-2 border-r border-black text-center">
                 {purchases.reduce((acc: number, p: any) => acc + (p.qty || 0), 0).toFixed(2)} Tons
               </td>
-              <td colSpan={2} className="p-2 border-r border-black"></td>
+              <td className="p-2 border-r border-black"></td>
+              <td className="p-2 border-r border-black text-right">
+                ₹{formatCurrency(summary.totalMaterialAmount || (summary.totalAmount - (summary.totalTransportCharges || 0)))}
+              </td>
+              <td className="p-2 border-r border-black text-right text-amber-900">
+                ₹{formatCurrency(summary.totalTransportCharges || 0)}
+              </td>
               <td className="p-2 border-r border-black text-right text-sm">
                 ₹{formatCurrency(summary.totalAmount)}
               </td>

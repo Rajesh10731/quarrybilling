@@ -100,6 +100,8 @@ export default function PurchaseReportPage() {
     totalTaxAmount: 0,
     totalGrandTotal: 0,
     totalPaid: 0,
+    totalVendorPending: 0,
+    totalTransportPending: 0,
     totalPending: 0,
   };
   const vendors = reportData?.vendors || [];
@@ -173,32 +175,36 @@ export default function PurchaseReportPage() {
           </div>
         </div>
 
-        {/* Print summary strip */}
-        <div className="grid grid-cols-5 gap-2 border border-black p-2 mt-3 text-xs bg-gray-50">
+        {/* Print summary strip — Vendor Items vs Transport Services Separated */}
+        <div className="grid grid-cols-6 gap-2 border border-black p-2 mt-3 text-xs bg-gray-50">
           <div>
             <span className="font-bold block text-[10px] uppercase">Total Loads:</span>
             <span className="font-extrabold">{kpi.totalLoads}</span>
           </div>
           <div>
-            <span className="font-bold block text-[10px] uppercase">Material Amount:</span>
+            <span className="font-bold block text-[10px] uppercase">Material Items:</span>
             <span className="font-extrabold">₹{formatCurrency(kpi.totalMaterialAmount)}</span>
           </div>
           <div>
-            <span className="font-bold block text-[10px] uppercase">Lorry Freight:</span>
+            <span className="font-bold block text-[10px] uppercase">Transport Charges:</span>
             <span className="font-extrabold">₹{formatCurrency(kpi.totalLorryFreight)}</span>
+          </div>
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Vendor Due:</span>
+            <span className="font-extrabold text-red-600">₹{formatCurrency(kpi.totalVendorPending || 0)}</span>
+          </div>
+          <div>
+            <span className="font-bold block text-[10px] uppercase">Transport Due:</span>
+            <span className="font-extrabold text-amber-700">₹{formatCurrency(kpi.totalTransportPending || 0)}</span>
           </div>
           <div>
             <span className="font-bold block text-[10px] uppercase">Grand Total:</span>
             <span className="font-extrabold">₹{formatCurrency(kpi.totalGrandTotal)}</span>
           </div>
-          <div>
-            <span className="font-bold block text-[10px] uppercase">Balance Pending:</span>
-            <span className="font-extrabold">₹{formatCurrency(kpi.totalPending)}</span>
-          </div>
         </div>
       </div>
 
-      {/* KPI Cards (hidden in print) */}
+      {/* KPI Cards (hidden in print) — Vendor Items & Transport Charges Separated */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 print:hidden">
         {/* Total Loads */}
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
@@ -216,7 +222,7 @@ export default function PurchaseReportPage() {
           </div>
         </div>
 
-        {/* Material Amount */}
+        {/* Material Cost (Vendor) */}
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -225,58 +231,58 @@ export default function PurchaseReportPage() {
             <div className="text-lg sm:text-2xl font-black text-white truncate max-w-[110px] sm:max-w-none">
               ₹{formatCurrency(kpi.totalMaterialAmount)}
             </div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400">Stone / material value</div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400">Stone / material items</div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
             <Package className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        {/* Lorry Freight — highlighted separately */}
+        {/* Lorry Freight (Transport) */}
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] sm:text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
-              Lorry Freight
+              Transport Charges
             </span>
             <div className="text-lg sm:text-2xl font-black text-amber-300 truncate max-w-[110px] sm:max-w-none">
               ₹{formatCurrency(kpi.totalLorryFreight)}
             </div>
-            <div className="text-[9px] sm:text-[10px] text-amber-400/80">Freight separated</div>
+            <div className="text-[9px] sm:text-[10px] text-amber-400/80">Lorry freight services</div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
             <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        {/* Grand Total */}
-        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+        {/* Vendor Items Pending Due (Payable to quarry suppliers) */}
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-red-500/30 bg-red-500/5 flex items-center justify-between">
           <div className="space-y-0.5">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Grand Total
+            <span className="text-[10px] sm:text-[11px] font-bold text-red-400 uppercase tracking-wider block">
+              Vendor Pending Due
             </span>
-            <div className="text-lg sm:text-2xl font-black text-emerald-400 truncate max-w-[110px] sm:max-w-none">
-              ₹{formatCurrency(kpi.totalGrandTotal)}
+            <div className={`text-lg sm:text-2xl font-black truncate max-w-[110px] sm:max-w-none ${(kpi.totalVendorPending || 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>
+              ₹{formatCurrency(kpi.totalVendorPending || 0)}
             </div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400">Incl. all charges</div>
-          </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
-            <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-        </div>
-
-        {/* Balance Pending */}
-        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Pending Balance
-            </span>
-            <div className={`text-lg sm:text-2xl font-black truncate max-w-[110px] sm:max-w-none ${kpi.totalPending > 0 ? "text-red-400" : "text-emerald-400"}`}>
-              ₹{formatCurrency(kpi.totalPending)}
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-red-400">Payable to vendors</div>
+            <div className="text-[9px] sm:text-[10px] text-red-300">Payable to suppliers</div>
           </div>
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
             <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+        </div>
+
+        {/* Transport Charges Pending (Payable to lorry transporters) */}
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] sm:text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+              Transport Pending
+            </span>
+            <div className={`text-lg sm:text-2xl font-black truncate max-w-[110px] sm:max-w-none ${(kpi.totalTransportPending || 0) > 0 ? "text-amber-300" : "text-slate-400"}`}>
+              ₹{formatCurrency(kpi.totalTransportPending || 0)}
+            </div>
+            <div className="text-[9px] sm:text-[10px] text-amber-400/80">Payable to transport</div>
+          </div>
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+            <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -402,7 +408,8 @@ export default function PurchaseReportPage() {
                 <th className="p-3 print:p-1.5 text-right text-amber-400 print:text-black">Lorry Freight</th>
                 <th className="p-3 print:p-1.5 text-right">Grand Total</th>
                 <th className="p-3 print:p-1.5 text-right text-emerald-400 print:text-black">Paid</th>
-                <th className="p-3 print:p-1.5 text-right text-red-400 print:text-black">Pending</th>
+                <th className="p-3 print:p-1.5 text-right text-red-400 print:text-black">Vendor Due</th>
+                <th className="p-3 print:p-1.5 text-right text-amber-300 print:text-black">Transport Due</th>
                 <th className="p-3 print:p-1.5 text-center">Status</th>
                 <th className="p-3 print:p-1.5 text-right print:hidden">View</th>
               </tr>
@@ -410,13 +417,13 @@ export default function PurchaseReportPage() {
             <tbody className="divide-y divide-slate-800/50 print:divide-gray-300">
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-16 text-slate-400 font-medium">
+                  <td colSpan={13} className="text-center py-16 text-slate-400 font-medium">
                     Loading purchase records...
                   </td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-16 text-slate-500">
+                  <td colSpan={13} className="text-center py-16 text-slate-500">
                     <Truck className="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-50" />
                     <p className="font-semibold text-slate-400">No purchases found for this filter.</p>
                   </td>
@@ -498,9 +505,14 @@ export default function PurchaseReportPage() {
                         ₹{formatCurrency(r.paidAmount)}
                       </td>
 
-                      {/* Pending */}
-                      <td className={`p-3 print:p-1.5 text-right font-black ${r.pendingAmount > 0 ? "text-red-400" : "text-emerald-400"} print:text-black`}>
-                        ₹{formatCurrency(r.pendingAmount)}
+                      {/* Vendor Pending Due */}
+                      <td className={`p-3 print:p-1.5 text-right font-black ${(r.vendorPending || 0) > 0 ? "text-red-400" : "text-emerald-400"} print:text-black`}>
+                        ₹{formatCurrency(r.vendorPending || 0)}
+                      </td>
+
+                      {/* Transport Pending Due */}
+                      <td className={`p-3 print:p-1.5 text-right font-black ${(r.transportPending || 0) > 0 ? "text-amber-300" : "text-slate-500"} print:text-black`}>
+                        {(r.transportPending || 0) > 0 ? `₹${formatCurrency(r.transportPending)}` : "₹0.00"}
                       </td>
 
                       {/* Status */}
@@ -560,9 +572,13 @@ export default function PurchaseReportPage() {
                   <td className="p-3 print:p-1.5 text-right font-black text-emerald-400 print:text-black">
                     ₹{formatCurrency(filteredRows.reduce((s: number, r: any) => s + (r.paidAmount || 0), 0))}
                   </td>
-                  {/* Pending */}
+                  {/* Vendor Pending */}
                   <td className="p-3 print:p-1.5 text-right font-black text-red-400 print:text-black">
-                    ₹{formatCurrency(filteredRows.reduce((s: number, r: any) => s + (r.pendingAmount || 0), 0))}
+                    ₹{formatCurrency(filteredRows.reduce((s: number, r: any) => s + (r.vendorPending || 0), 0))}
+                  </td>
+                  {/* Transport Pending */}
+                  <td className="p-3 print:p-1.5 text-right font-black text-amber-300 print:text-black">
+                    ₹{formatCurrency(filteredRows.reduce((s: number, r: any) => s + (r.transportPending || 0), 0))}
                   </td>
                   <td colSpan={2} className="print:hidden" />
                 </tr>
@@ -626,7 +642,7 @@ export default function PurchaseReportPage() {
                     <span className="font-bold text-amber-300 uppercase">{r.qty?.toFixed(2)} {r.unit} — {r.material}</span>
                   </div>
 
-                  {/* Amounts — Freight Separated */}
+                  {/* Amounts — Vendor Items & Freight Separated */}
                   <div className="grid grid-cols-2 gap-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-xs">
                     <div>
                       <span className="text-[9px] text-slate-400 block uppercase">Material Amt:</span>
@@ -639,14 +655,20 @@ export default function PurchaseReportPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-[9px] text-slate-400 block uppercase">Grand Total:</span>
-                      <span className="font-black text-white">₹{formatCurrency(r.grandTotal)}</span>
+                      <span className="text-[9px] text-red-400 block uppercase">Vendor Pending:</span>
+                      <span className={`font-black ${(r.vendorPending || 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                        ₹{formatCurrency(r.vendorPending || 0)}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-[9px] text-red-400 block uppercase">Pending:</span>
-                      <span className={`font-black ${r.pendingAmount > 0 ? "text-red-400" : "text-emerald-400"}`}>
-                        ₹{formatCurrency(r.pendingAmount)}
+                      <span className="text-[9px] text-amber-400 block uppercase">Transport Pending:</span>
+                      <span className={`font-black ${(r.transportPending || 0) > 0 ? "text-amber-300" : "text-slate-400"}`}>
+                        {(r.transportPending || 0) > 0 ? `₹${formatCurrency(r.transportPending)}` : "₹0.00"}
                       </span>
+                    </div>
+                    <div className="col-span-2 pt-1 border-t border-slate-800 flex justify-between items-center">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Grand Total:</span>
+                      <span className="font-black text-white text-sm">₹{formatCurrency(r.grandTotal)}</span>
                     </div>
                   </div>
                 </div>
@@ -664,8 +686,9 @@ export default function PurchaseReportPage() {
             <p>Total Loads: {kpi.totalLoads} | Total Qty: {kpi.totalQty?.toFixed(2)} Tons</p>
             <p>Material Amount: ₹{formatCurrency(kpi.totalMaterialAmount)}</p>
             <p>Lorry Freight: ₹{formatCurrency(kpi.totalLorryFreight)}</p>
+            <p>Vendor Pending: ₹{formatCurrency(kpi.totalVendorPending || 0)} | Transport Pending: ₹{formatCurrency(kpi.totalTransportPending || 0)}</p>
             <p>Grand Total: ₹{formatCurrency(kpi.totalGrandTotal)}</p>
-            <p>Total Paid: ₹{formatCurrency(kpi.totalPaid)} | Pending: ₹{formatCurrency(kpi.totalPending)}</p>
+            <p>Total Paid: ₹{formatCurrency(kpi.totalPaid)}</p>
             <p className="mt-2 text-[10px] text-gray-500">Generated by QuarryBilling System</p>
           </div>
           <div className="text-center">

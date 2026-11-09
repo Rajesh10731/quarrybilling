@@ -139,6 +139,14 @@ export default function PurchaseDetailPage() {
   }
 
   const pendingAmount = Math.max(0, (purchase.grandTotal || 0) - (purchase.paidAmount || 0));
+  const isFreightPaidByUs = (purchase.freightPaidBy || "Paid by Us") === "Paid by Us";
+  const transportCharges = isFreightPaidByUs || (purchase.lorryFreight || 0) > 0 ? (purchase.lorryFreight || 0) : 0;
+  const vendorAmount = Math.max(0, (purchase.grandTotal || 0) - transportCharges);
+  const totalPaid = purchase.paidAmount || 0;
+  const vendorPaid = Math.min(totalPaid, vendorAmount);
+  const transportPaid = Math.max(0, totalPaid - vendorAmount);
+  const vendorPending = Math.max(0, vendorAmount - vendorPaid);
+  const transportPending = Math.max(0, transportCharges - transportPaid);
   const trade = purchase.trade;
 
   return (
@@ -258,17 +266,33 @@ export default function PurchaseDetailPage() {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <span className="text-[11px] text-slate-400 uppercase font-bold block">
-                    Pending Payable:
-                  </span>
-                  <span
-                    className={`text-lg font-black ${
-                      pendingAmount > 0 ? "text-red-400" : "text-emerald-400"
-                    }`}
-                  >
-                    ₹{formatCurrency(pendingAmount)}
-                  </span>
+                <div className="text-right flex items-center gap-3">
+                  <div>
+                    <span className="text-[10px] text-red-400 uppercase font-bold block">
+                      Vendor Pending:
+                    </span>
+                    <span
+                      className={`text-base font-black ${
+                        vendorPending > 0 ? "text-red-400" : "text-emerald-400"
+                      }`}
+                    >
+                      ₹{formatCurrency(vendorPending)}
+                    </span>
+                  </div>
+                  {transportCharges > 0 && (
+                    <div className="border-l border-slate-700 pl-3">
+                      <span className="text-[10px] text-amber-400 uppercase font-bold block">
+                        Transport Pending:
+                      </span>
+                      <span
+                        className={`text-base font-black ${
+                          transportPending > 0 ? "text-amber-300" : "text-slate-400"
+                        }`}
+                      >
+                        ₹{formatCurrency(transportPending)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {pendingAmount > 0 && (
@@ -288,12 +312,14 @@ export default function PurchaseDetailPage() {
                 <span className="font-bold text-slate-200">
                   ₹{formatCurrency(purchase.materialAmount)}
                 </span>
+                <span className="text-[10px] text-red-400 font-semibold block">Due: ₹{formatCurrency(vendorPending)}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Lorry Freight Charge:</span>
                 <span className="font-bold text-slate-200">
                   ₹{formatCurrency(purchase.lorryFreight || 0)} ({purchase.freightPaidBy})
                 </span>
+                <span className="text-[10px] text-amber-400 font-semibold block">Due: ₹{formatCurrency(transportPending)}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Amount Paid So Far:</span>

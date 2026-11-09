@@ -82,17 +82,40 @@ export default function PurchasesListPage() {
     return purchases.filter((p) => (p.paymentStatus || "UNPAID") === statusFilter);
   }, [purchases, statusFilter]);
 
-  // Aggregate stats
+  // Aggregate stats (vendor items vs transport freight separated)
   const totalPurchasesCount = purchases.length;
   const totalPurchaseValue = useMemo(
     () => purchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0),
     [purchases]
   );
-  const totalPendingAmount = useMemo(
+  const totalMaterialValue = useMemo(
+    () => purchases.reduce((sum, p) => sum + (p.materialAmount || Math.max(0, (p.grandTotal || 0) - (p.lorryFreight || 0))), 0),
+    [purchases]
+  );
+  const totalTransportFreight = useMemo(
+    () => purchases.reduce((sum, p) => sum + (p.lorryFreight || 0), 0),
+    [purchases]
+  );
+  const totalVendorPending = useMemo(
     () =>
-      purchases
-        .filter((p) => p.paymentStatus === "UNPAID" || p.paymentStatus === "PARTIAL")
-        .reduce((sum, p) => sum + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0),
+      purchases.reduce((sum, p) => {
+        const freight = (p.freightPaidBy || "Paid by Us") === "Paid by Us" || (p.lorryFreight || 0) > 0 ? (p.lorryFreight || 0) : 0;
+        const vendorPart = Math.max(0, (p.grandTotal || 0) - freight);
+        const paid = p.paidAmount || 0;
+        const vPaid = Math.min(paid, vendorPart);
+        return sum + Math.max(0, vendorPart - vPaid);
+      }, 0),
+    [purchases]
+  );
+  const totalTransportPending = useMemo(
+    () =>
+      purchases.reduce((sum, p) => {
+        const freight = (p.freightPaidBy || "Paid by Us") === "Paid by Us" || (p.lorryFreight || 0) > 0 ? (p.lorryFreight || 0) : 0;
+        const vendorPart = Math.max(0, (p.grandTotal || 0) - freight);
+        const paid = p.paidAmount || 0;
+        const tPaid = Math.max(0, paid - vendorPart);
+        return sum + Math.max(0, freight - tPaid);
+      }, 0),
     [purchases]
   );
   const totalInwardTonnage = useMemo(
@@ -147,28 +170,34 @@ export default function PurchasesListPage() {
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
               Total Purchases Cost
             </span>
-            <div className="text-lg sm:text-2xl font-black text-amber-400 truncate max-w-[120px] sm:max-w-none">
+            <div className="text-lg sm:text-2xl font-black text-white truncate max-w-[120px] sm:max-w-none">
               ₹{formatCurrency(totalPurchaseValue)}
             </div>
-            <div className="text-[10px] text-slate-500">Gross inward value</div>
+            <div className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+              <span>Items: ₹{formatCurrency(totalMaterialValue)}</span>
+              <span>•</span>
+              <span className="text-amber-400">Freight: ₹{formatCurrency(totalTransportFreight)}</span>
+            </div>
           </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
             <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        {/* Pending Due */}
-        <div className="glass-card rounded-2xl p-4 border border-slate-800 flex items-center justify-between">
+        {/* Pending Due — Vendor vs Transport Separated */}
+        <div className="glass-card rounded-2xl p-4 border border-red-500/30 bg-red-500/5 flex items-center justify-between">
           <div className="space-y-0.5">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-wider block">
               Vendor Pending Due
             </span>
             <div className="text-lg sm:text-2xl font-black text-red-400 truncate max-w-[120px] sm:max-w-none">
-              ₹{formatCurrency(totalPendingAmount)}
+              ₹{formatCurrency(totalVendorPending)}
             </div>
-            <div className="text-[10px] text-slate-500">Payable to suppliers</div>
+            <div className="text-[10px] text-red-300 font-medium">
+              Material balance • Transport: <span className="text-amber-300 font-bold">₹{formatCurrency(totalTransportPending)}</span>
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
             <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>

@@ -55,43 +55,64 @@ export async function GET(req: Request) {
     // Get all unique vendor names for the dropdown
     const allVendors = await Purchase.distinct("vendorName");
 
-    // Compute per-row data with freight separated
-    const rows = purchases.map((p: any) => ({
-      _id: p._id,
-      inwardNo: p.inwardNo,
-      date: p.date,
-      vendorName: p.vendorName,
-      vehicleNo: p.vehicleNo,
-      transportName: p.transportName || "",
-      driverName: p.driverName || "",
-      material: p.material,
-      qty: p.qty || 0,
-      unit: p.unit || "Tonne",
-      rate: p.rate || 0,
-      // Separated amounts
-      materialAmount: round2(p.materialAmount || 0),
-      lorryFreight: round2(p.lorryFreight || 0),
-      freightPaidBy: p.freightPaidBy || "Paid by Us",
-      loadingCharges: round2(p.loadingCharges || 0),
-      taxAmount: round2(p.taxAmount || 0),
-      otherCharges: round2(p.otherCharges || 0),
-      grandTotal: round2(p.grandTotal || 0),
-      // Payment
-      paymentStatus: p.paymentStatus || "UNPAID",
-      paidAmount: round2(p.paidAmount || 0),
-      pendingAmount: round2(Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0))),
-    }));
+    // Compute per-row data with vendor item cost & transport charges strictly separated
+    const rows = purchases.map((p: any) => {
+      const materialAmount = round2(p.materialAmount || (p.qty || 0) * (p.rate || 0));
+      const lorryFreight = round2(p.lorryFreight || 0);
+      const isFreightPaidByUs = (p.freightPaidBy || "Paid by Us") === "Paid by Us";
+      const transportCharges = isFreightPaidByUs || lorryFreight > 0 ? lorryFreight : 0;
+      const grandTotal = round2(p.grandTotal || 0);
+      const vendorAmount = round2(Math.max(0, grandTotal - transportCharges));
+      const paid = round2(p.paidAmount || 0);
 
-    // KPI Summary — freight always separated
+      const vendorPaid = round2(Math.min(paid, vendorAmount));
+      const transportPaid = round2(Math.max(0, paid - vendorAmount));
+      const vendorPending = round2(Math.max(0, vendorAmount - vendorPaid));
+      const transportPending = round2(Math.max(0, transportCharges - transportPaid));
+
+      return {
+        _id: p._id,
+        inwardNo: p.inwardNo,
+        date: p.date,
+        vendorName: p.vendorName,
+        vehicleNo: p.vehicleNo,
+        transportName: p.transportName || "",
+        driverName: p.driverName || "",
+        material: p.material,
+        qty: p.qty || 0,
+        unit: p.unit || "Tonne",
+        rate: p.rate || 0,
+        // Separated amounts
+        materialAmount,
+        vendorAmount,
+        lorryFreight: transportCharges,
+        freightPaidBy: p.freightPaidBy || "Paid by Us",
+        loadingCharges: round2(p.loadingCharges || 0),
+        taxAmount: round2(p.taxAmount || 0),
+        otherCharges: round2(p.otherCharges || 0),
+        grandTotal,
+        // Separated Pending
+        vendorPending,
+        transportPending,
+        // Payment
+        paymentStatus: p.paymentStatus || "UNPAID",
+        paidAmount: paid,
+        pendingAmount: round2(vendorPending + transportPending),
+      };
+    });
+
+    // KPI Summary — vendor and transport services separated
     const totalLoads = rows.length;
     const totalQty = round2(rows.reduce((s, r) => s + r.qty, 0));
-    const totalMaterialAmount = round2(rows.reduce((s, r) => s + r.materialAmount, 0));
+    const totalMaterialAmount = round2(rows.reduce((s, r) => s + r.vendorAmount, 0));
     const totalLorryFreight = round2(rows.reduce((s, r) => s + r.lorryFreight, 0));
     const totalLoadingCharges = round2(rows.reduce((s, r) => s + r.loadingCharges, 0));
     const totalOtherCharges = round2(rows.reduce((s, r) => s + r.otherCharges, 0));
     const totalTaxAmount = round2(rows.reduce((s, r) => s + r.taxAmount, 0));
     const totalGrandTotal = round2(rows.reduce((s, r) => s + r.grandTotal, 0));
     const totalPaid = round2(rows.reduce((s, r) => s + r.paidAmount, 0));
+    const totalVendorPending = round2(rows.reduce((s, r) => s + r.vendorPending, 0));
+    const totalTransportPending = round2(rows.reduce((s, r) => s + r.transportPending, 0));
     const totalPending = round2(rows.reduce((s, r) => s + r.pendingAmount, 0));
 
     const company = (await CompanySettings.findOne()) || {
@@ -113,6 +134,8 @@ export async function GET(req: Request) {
         totalTaxAmount,
         totalGrandTotal,
         totalPaid,
+        totalVendorPending,
+        totalTransportPending,
         totalPending,
       },
       vendors: allVendors.sort(),

@@ -99,18 +99,69 @@ export async function linkVendor(body: any) {
 /** Fields the client may never set directly on a purchase (they are derived from payments). */
 export const DERIVED_PAYMENT_FIELDS = ["payments", "paidAmount", "paymentStatus", "paymentDate", "paymentMode", "paymentRef"] as const;
 
-/** Money summary for a vendor: what is still payable = opening balance + unpaid part of every purchase. */
-export function vendorSummary(openingBalance: number, purchases: { grandTotal?: number; paidAmount?: number; qty?: number }[]) {
-  const totalAmount = round2(purchases.reduce((s, p) => s + (p.grandTotal || 0), 0));
-  const totalPaid = round2(purchases.reduce((s, p) => s + (p.paidAmount || 0), 0));
-  const unpaidOnPurchases = purchases.reduce((s, p) => s + Math.max(0, (p.grandTotal || 0) - (p.paidAmount || 0)), 0);
+/** Money summary for a vendor: separates material item cost (vendor) and transport charges (lorry). */
+export function vendorSummary(
+  openingBalance: number,
+  purchases: {
+    grandTotal?: number;
+    paidAmount?: number;
+    qty?: number;
+    materialAmount?: number;
+    lorryFreight?: number;
+    freightPaidBy?: string;
+  }[]
+) {
+  let totalAmount = 0;
+  let totalMaterialAmount = 0;
+  let totalTransportCharges = 0;
+  let totalPaid = 0;
+  let vendorPaidTotal = 0;
+  let transportPaidTotal = 0;
+  let vendorPendingTotal = 0;
+  let transportPendingTotal = 0;
+  let totalTonnage = 0;
+
+  for (const p of purchases) {
+    const grand = round2(p.grandTotal || 0);
+    const freight = round2(p.lorryFreight || 0);
+    const isFreightPaidByUs = (p.freightPaidBy || "Paid by Us") === "Paid by Us";
+    const transport = isFreightPaidByUs || freight > 0 ? freight : 0;
+    const vendorPart = round2(Math.max(0, grand - transport));
+    const paid = round2(p.paidAmount || 0);
+
+    const vPaid = round2(Math.min(paid, vendorPart));
+    const tPaid = round2(Math.max(0, paid - vendorPart));
+    const vPending = round2(Math.max(0, vendorPart - vPaid));
+    const tPending = round2(Math.max(0, transport - tPaid));
+
+    totalAmount += grand;
+    totalMaterialAmount += vendorPart;
+    totalTransportCharges += transport;
+    totalPaid += paid;
+    vendorPaidTotal += vPaid;
+    transportPaidTotal += tPaid;
+    vendorPendingTotal += vPending;
+    transportPendingTotal += tPending;
+    totalTonnage += p.qty || 0;
+  }
+
+  const vPendingWithOpening = round2((openingBalance || 0) + vendorPendingTotal);
   return {
     openingBalance: openingBalance || 0,
     totalPurchases: purchases.length,
-    totalAmount,
-    totalPaid,
-    pendingBalance: round2((openingBalance || 0) + unpaidOnPurchases),
-    totalTonnage: round2(purchases.reduce((s, p) => s + (p.qty || 0), 0)),
+    totalAmount: round2(totalAmount),
+    totalMaterialAmount: round2(totalMaterialAmount),
+    totalTransportCharges: round2(totalTransportCharges),
+    totalPaid: round2(totalPaid),
+    vendorPaid: round2(vendorPaidTotal),
+    transportPaid: round2(transportPaidTotal),
+    // Vendor pending balance = material/item pending + opening balance
+    vendorPending: vPendingWithOpening,
+    transportPending: round2(transportPendingTotal),
+    // pendingBalance represents the vendor's own pending balance
+    pendingBalance: vPendingWithOpening,
+    totalPending: round2(vPendingWithOpening + transportPendingTotal),
+    totalTonnage: round2(totalTonnage),
   };
 }
 
